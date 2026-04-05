@@ -83,9 +83,8 @@ function Set-ContextMenuEntries {
     )
 
     $entries = @(
-        @{ parent = "$classesRoot\*\shell\CopyWSLPath";                    cmd = "wscript.exe `"$vbsPath`" `"%1`"" },
-        @{ parent = "$classesRoot\Directory\shell\CopyWSLPath";            cmd = "wscript.exe `"$vbsPath`" `"%1`"" },
-        @{ parent = "$classesRoot\Directory\Background\shell\CopyWSLPath"; cmd = "wscript.exe `"$vbsPath`" `"%V`"" }
+        @{ parent = "$classesRoot\*\shell\CopyWSLPath";           cmd = "wscript.exe `"$vbsPath`" `"%1`"" },
+        @{ parent = "$classesRoot\Directory\shell\CopyWSLPath";   cmd = "wscript.exe `"$vbsPath`" `"%1`"" }
     )
 
     foreach ($entry in $entries) {
@@ -224,7 +223,7 @@ echo "$DEST/cmdp.sh"
             Write-Host "  To activate cmdp, add this line to your shell config" -ForegroundColor White
             Write-Host "  BEFORE any prompt initializer (starship, oh-my-zsh...):" -ForegroundColor White
             Write-Host ""
-            Write-Host '    source "$HOME/.local/share/cmdp/cmdp.sh"' -ForegroundColor Cyan
+            Write-Host '    source "$HOME/.local/share/cmdp/cmdp.sh"  # cmdp: convert WSL path → Windows path + clipboard' -ForegroundColor Cyan
             Write-Host ""
         } catch {
             Write-Err "Failed to install cmdp in WSL: $_"

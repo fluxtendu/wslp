@@ -23,6 +23,9 @@ if (-not $inputPath) {
     exit 0
 }
 
+# Normalize bare drive letter "C:" → "C:\" (e.g. from %V on a drive root).
+if ($inputPath -match '^[A-Za-z]:$') { $inputPath = $inputPath + '\' }
+
 # Resolve relative paths (., ..\foo, .\file.txt) to absolute Windows paths.
 # Only applies to paths that look relative — not UNC, not drive-rooted.
 if ($inputPath -notlike '\\*' -and $inputPath -notmatch '^[A-Za-z]:') {

@@ -9,6 +9,8 @@ C:\Users\janot\projects\foo  →  /mnt/c/Users/janot/projects/foo
 
 The converted path is automatically copied to your clipboard.
 
+**Why not just `wslpath`?** `wslpath` only works inside WSL. `wslp` brings path conversion to Windows — as a terminal command, a right-click menu entry, and a clipboard shortcut — so you can grab a WSL path from Explorer or CMD without ever opening a WSL shell. `cmdp` covers the reverse direction from inside WSL, matching what `wslpath -w` does but with automatic clipboard copy.
+
 ---
 
 ## Features

@@ -21,6 +21,12 @@ cmdp() {
         return 1
     fi
 
-    printf '%s' "$win_path" | clip.exe
+    if command -v clip.exe > /dev/null 2>&1; then
+        printf '%s' "$win_path" | clip.exe
+    else
+        echo "cmdp: clip.exe not found — path not copied to clipboard." >&2
+        echo "      Ensure /etc/wsl.conf does not set appendWindowsPath=false." >&2
+    fi
+
     printf '%s\n' "$win_path"
 }

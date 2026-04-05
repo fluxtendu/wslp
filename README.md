@@ -146,7 +146,7 @@ This removes the command, PATH entry, registry keys, and WSL cmdp automatically.
 - Windows 10 / Windows 11
 - WSL 1 and WSL 2
 - PowerShell 5.1+
-- Any WSL shell (bash, zsh, fish…) for `cmdp`
+- bash or zsh for `cmdp` (fish is not supported)
 
 ---
 

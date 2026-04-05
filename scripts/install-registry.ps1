@@ -21,7 +21,7 @@ param(
 )
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -182,36 +182,54 @@ $installCmdp = if ($Silent) { $false } else {
 }
 
 if ($installCmdp) {
-    $null = & wsl.exe --status 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warn "WSL does not appear to be installed or running. Skipping cmdp."
-    } else {
-        $cmdpSrc    = Join-Path $InstallDir "scripts\cmdp.sh"
-        $cmdpWslSrc = (& wsl.exe wslpath -u "$cmdpSrc" 2>$null).Trim()
+    # Check wsl.exe exists and a default distro is available
+    $wslAvailable = $false
+    try {
+        $null = & wsl.exe --status 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            # --status passes even with no distro; probe further
+            $null = & wsl.exe -e true 2>$null
+            $wslAvailable = ($LASTEXITCODE -eq 0)
+        }
+    } catch {
+        # wsl.exe not found
+    }
 
-        $installScript = @"
+    if (-not $wslAvailable) {
+        Write-Warn "WSL is not available or no default distro is configured. Skipping cmdp."
+    } else {
+        $cmdpSrc = Join-Path $InstallDir "scripts\cmdp.sh"
+
+        # Pass the source path via environment variable so no path characters
+        # (spaces, $, backticks…) can be interpreted by the bash script.
+        $installScript = @'
 set -e
-DEST="\$HOME/.local/share/wslp"
-mkdir -p "\$DEST"
-cp "$cmdpWslSrc" "\$DEST/cmdp.sh"
-chmod +x "\$DEST/cmdp.sh"
-SOURCE_LINE='[ -f "\$HOME/.local/share/wslp/cmdp.sh" ] && source "\$HOME/.local/share/wslp/cmdp.sh"'
-for RC in "\$HOME/.zshrc" "\$HOME/.bashrc"; do
-    if [ -f "\$RC" ] && ! grep -qF "wslp/cmdp.sh" "\$RC"; then
-        printf '\n# wslp\n%s\n' "\$SOURCE_LINE" >> "\$RC"
-        echo "Added to \$RC"
+DEST="$HOME/.local/share/wslp"
+mkdir -p "$DEST"
+cp "$WSLP_CMDP_SRC" "$DEST/cmdp.sh"
+chmod +x "$DEST/cmdp.sh"
+SOURCE_LINE='[ -f "$HOME/.local/share/wslp/cmdp.sh" ] && source "$HOME/.local/share/wslp/cmdp.sh"'
+for RC in "$HOME/.zshrc" "$HOME/.bashrc"; do
+    if [ -f "$RC" ] && ! grep -qF "wslp/cmdp.sh" "$RC"; then
+        printf '\n# wslp\n%s\n' "$SOURCE_LINE" >> "$RC"
+        echo "Added to $RC"
     fi
 done
 echo "cmdp installed. Restart your WSL shell or run: source ~/.local/share/wslp/cmdp.sh"
-"@
+'@
 
         Write-Step "Installing cmdp in WSL..."
         try {
+            # Convert Windows path to WSL path and expose as env var inside WSL
+            $cmdpWslSrc = (& wsl.exe wslpath -u $cmdpSrc 2>$null).Trim()
+            $env:WSLP_CMDP_SRC = $cmdpWslSrc
             $output = $installScript | & wsl.exe bash 2>&1
             $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
             Write-Ok "cmdp installed in WSL."
         } catch {
             Write-Err "Failed to install cmdp in WSL: $_"
+        } finally {
+            Remove-Item Env:\WSLP_CMDP_SRC -ErrorAction SilentlyContinue
         }
     }
 }

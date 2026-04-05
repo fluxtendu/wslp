@@ -100,15 +100,26 @@ if [ -d "$DEST" ]; then
     echo "Removed $DEST"
 fi
 for RC in "$HOME/.zshrc" "$HOME/.bashrc"; do
-    if [ -f "$RC" ] && grep -q "wslp/cmdp.sh" "$RC"; then
-        sed -i '/# wslp$/d; /wslp\/cmdp\.sh/d' "$RC"
+    if [ -f "$RC" ] && grep -qF "wslp/cmdp.sh" "$RC"; then
+        # Remove only the exact lines added by the installer, nothing else.
+        # The pattern anchors on the exact marker comment to avoid false matches.
+        sed -i '/^# wslp$/{N; /\n.*wslp\/cmdp\.sh/d}' "$RC"
+        sed -i '/wslp\/cmdp\.sh/d' "$RC"
         echo "Cleaned $RC"
     fi
 done
 '@
 
-$null = & wsl.exe --status 2>$null
-if ($LASTEXITCODE -eq 0) {
+$wslAvailable = $false
+try {
+    $null = & wsl.exe --status 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        $null = & wsl.exe -e true 2>$null
+        $wslAvailable = ($LASTEXITCODE -eq 0)
+    }
+} catch { }
+
+if ($wslAvailable) {
     $output = $cleanupScript | & wsl.exe bash 2>&1
     $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
     Write-Ok "WSL cleanup done."

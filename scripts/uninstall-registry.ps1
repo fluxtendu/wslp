@@ -96,19 +96,12 @@ else
 fi
 '@
 
-$wslAvailable = $false
 try {
-    $null = & wsl.exe --status 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        $null = & wsl.exe -e true 2>$null
-        $wslAvailable = ($LASTEXITCODE -eq 0)
-    }
-} catch { }
-
-if ($wslAvailable) {
     $output = $cleanupScript | & wsl.exe bash 2>&1
     $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
     Write-Ok "WSL cleanup done."
+} catch {
+    Write-Warn "WSL not available — ~/.local/share/cmdp was not removed."
 }
 
 Write-Host ""

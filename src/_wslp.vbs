@@ -10,34 +10,29 @@ scriptDir  = CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScr
 
 ' Encode the path as UTF-16LE base64 so no character in the path
 ' (quotes, backticks, special chars, accents) can break the PowerShell
-' command line. We build the UTF-16LE byte sequence manually from the
-' VBScript string (which is natively UTF-16) to avoid ADODB.Stream
-' re-encoding the string through the system ANSI code page.
-Dim i, charCode, lo, hi, byteArray()
-ReDim byteArray(LenB(path) - 1)
-For i = 1 To Len(path)
-    charCode = AscW(Mid(path, i, 1))
-    If charCode < 0 Then charCode = charCode + 65536  ' handle signed AscW
-    lo = charCode Mod 256
-    hi = (charCode \ 256) Mod 256
-    byteArray((i - 1) * 2)     = lo
-    byteArray((i - 1) * 2 + 1) = hi
-Next
-
-' Write raw bytes into a binary stream to get base64 via MSXML
+' command line.
+'
+' Strategy: write the string into an ADODB.Stream opened as text with
+' charset utf-16le, then re-read it in binary mode. The stream writes
+' a 2-byte BOM first, which we skip by setting Position = 2 before
+' switching to binary read. This preserves the native UTF-16 encoding
+' of VBScript strings without going through the ANSI code page.
 Dim stream
 Set stream = CreateObject("ADODB.Stream")
 stream.Open
-stream.Type = 1  ' binary
-stream.Write byteArray
+stream.Type    = 2          ' text mode
+stream.Charset = "utf-16le"
+stream.WriteText path
 stream.Position = 0
-
-Dim xmlObj : Set xmlObj = CreateObject("MSXML2.DOMDocument")
-Dim xmlElem : Set xmlElem = xmlObj.createElement("b64")
-xmlElem.DataType = "bin.base64"
-xmlElem.nodeTypedValue = stream.Read
+stream.Type     = 1         ' switch to binary mode to read raw bytes
+stream.Position = 2         ' skip the 2-byte UTF-16LE BOM
+Dim bytes : bytes = stream.Read
 stream.Close
 
+Dim xmlObj  : Set xmlObj  = CreateObject("MSXML2.DOMDocument")
+Dim xmlElem : Set xmlElem = xmlObj.createElement("b64")
+xmlElem.DataType      = "bin.base64"
+xmlElem.nodeTypedValue = bytes
 encoded = xmlElem.Text
 encoded = Join(Split(encoded, Chr(10)), "")  ' strip LF
 encoded = Join(Split(encoded, Chr(13)), "")  ' strip CR

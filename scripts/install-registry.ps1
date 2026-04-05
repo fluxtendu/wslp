@@ -181,27 +181,11 @@ $installCmdp = if ($Silent) { $false } else {
 }
 
 if ($installCmdp) {
-    # Check wsl.exe exists and a default distro is available
-    $wslAvailable = $false
-    try {
-        $null = & wsl.exe --status 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            # --status passes even with no distro; probe further
-            $null = & wsl.exe -e true 2>$null
-            $wslAvailable = ($LASTEXITCODE -eq 0)
-        }
-    } catch {
-        # wsl.exe not found
-    }
+    $cmdpSrc = Join-Path $InstallDir "scripts\cmdp.sh"
 
-    if (-not $wslAvailable) {
-        Write-Warn "WSL is not available or no default distro is configured. Skipping cmdp."
-    } else {
-        $cmdpSrc = Join-Path $InstallDir "scripts\cmdp.sh"
-
-        # Pass the source path via environment variable so no path characters
-        # (spaces, $, backticks…) can be interpreted by the bash script.
-        $installScript = @'
+    # Pass the source path via environment variable so no path characters
+    # (spaces, $, backticks…) can be interpreted by the bash script.
+    $installScript = @'
 set -e
 DEST="$HOME/.local/share/cmdp"
 mkdir -p "$DEST"
@@ -210,27 +194,26 @@ chmod +x "$DEST/cmdp.sh"
 echo "$DEST/cmdp.sh"
 '@
 
-        Write-Step "Installing cmdp in WSL..."
-        try {
-            $drive = $cmdpSrc.Substring(0, 1).ToLower()
-            $rest  = $cmdpSrc.Substring(2).Replace('\', '/')
-            $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
-            $env:WSLENV = 'WSLP_CMDP_SRC'
-            $output = $installScript | & wsl.exe bash 2>&1
-            $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
-            Write-Ok "cmdp copied to ~/.local/share/cmdp/cmdp.sh"
-            Write-Host ""
-            Write-Host "  To activate cmdp, add this line to your shell config" -ForegroundColor White
-            Write-Host "  BEFORE any prompt initializer (starship, oh-my-zsh...):" -ForegroundColor White
-            Write-Host ""
-            Write-Host '    source "$HOME/.local/share/cmdp/cmdp.sh"  # cmdp: convert WSL path → Windows path + clipboard' -ForegroundColor Cyan
-            Write-Host ""
-        } catch {
-            Write-Err "Failed to install cmdp in WSL: $_"
-        } finally {
-            Remove-Item Env:\WSLP_CMDP_SRC -ErrorAction SilentlyContinue
-            Remove-Item Env:\WSLENV        -ErrorAction SilentlyContinue
-        }
+    Write-Step "Installing cmdp in WSL..."
+    try {
+        $drive = $cmdpSrc.Substring(0, 1).ToLower()
+        $rest  = $cmdpSrc.Substring(2).Replace('\', '/')
+        $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
+        $env:WSLENV = 'WSLP_CMDP_SRC'
+        $output = $installScript | & wsl.exe bash 2>&1
+        $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+        Write-Ok "cmdp copied to ~/.local/share/cmdp/cmdp.sh"
+        Write-Host ""
+        Write-Host "  To activate cmdp, add this line to your shell config" -ForegroundColor White
+        Write-Host "  BEFORE any prompt initializer (starship, oh-my-zsh...):" -ForegroundColor White
+        Write-Host ""
+        Write-Host '    source "$HOME/.local/share/cmdp/cmdp.sh"  # cmdp: convert WSL path → Windows path + clipboard' -ForegroundColor Cyan
+        Write-Host ""
+    } catch {
+        Write-Err "Failed to install cmdp in WSL: $_"
+    } finally {
+        Remove-Item Env:\WSLP_CMDP_SRC -ErrorAction SilentlyContinue
+        Remove-Item Env:\WSLENV        -ErrorAction SilentlyContinue
     }
 }
 

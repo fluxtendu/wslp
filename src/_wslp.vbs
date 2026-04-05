@@ -17,6 +17,7 @@ stream.Charset = "utf-16le"
 stream.WriteText path
 stream.Position = 0
 stream.Type = 1  ' binary
+stream.Position = 2  ' skip the 2-byte UTF-16LE BOM added by ADODB.Stream
 Dim bytes : bytes = stream.Read
 stream.Close
 

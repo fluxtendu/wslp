@@ -221,8 +221,9 @@ echo "cmdp installed. Restart your WSL shell or run: source ~/.local/share/wslp/
         Write-Step "Installing cmdp in WSL..."
         try {
             # Convert Windows path to WSL path and expose as env var inside WSL
-            $cmdpWslSrc = (& wsl.exe wslpath -u $cmdpSrc 2>$null).Trim()
-            $env:WSLP_CMDP_SRC = $cmdpWslSrc
+            $cmdpWslSrc = & wsl.exe wslpath -u $cmdpSrc 2>$null
+            if (-not $cmdpWslSrc) { throw "wslpath could not convert: $cmdpSrc" }
+            $env:WSLP_CMDP_SRC = $cmdpWslSrc.Trim()
             $output = $installScript | & wsl.exe bash 2>&1
             $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
             Write-Ok "cmdp installed in WSL."

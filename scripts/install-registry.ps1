@@ -226,6 +226,8 @@ echo "cmdp installed. Restart your WSL shell or run: source ~/.local/share/wslp/
             $drive = $cmdpSrc.Substring(0, 1).ToLower()
             $rest  = $cmdpSrc.Substring(2).Replace('\', '/')
             $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
+            # WSLENV controls which Windows env vars are passed into WSL
+            $env:WSLENV = 'WSLP_CMDP_SRC'
             $output = $installScript | & wsl.exe bash 2>&1
             $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
             Write-Ok "cmdp installed in WSL."
@@ -233,6 +235,7 @@ echo "cmdp installed. Restart your WSL shell or run: source ~/.local/share/wslp/
             Write-Err "Failed to install cmdp in WSL: $_"
         } finally {
             Remove-Item Env:\WSLP_CMDP_SRC -ErrorAction SilentlyContinue
+            Remove-Item Env:\WSLENV        -ErrorAction SilentlyContinue
         }
     }
 }

@@ -27,22 +27,16 @@ function Test-IsAdmin {
 # ---------------------------------------------------------------------------
 
 function Remove-ContextMenuEntries([Microsoft.Win32.RegistryKey]$hive, [string]$classesRoot) {
-    $subKeys = @(
+    foreach ($subKey in @(
         "$classesRoot\*\shell\CopyWSLPath",
         "$classesRoot\Directory\shell\CopyWSLPath",
         "$classesRoot\Directory\Background\shell\CopyWSLPath"
-    )
-    $removed = $false
-    foreach ($subKey in $subKeys) {
+    )) {
         try {
             # DeleteSubKeyTree(name, throwOnMissingSubKey: false) — safe no-op if absent
             $hive.DeleteSubKeyTree($subKey, $false)
-            $removed = $true
-        } catch {
-            # Silently ignore individual failures (e.g. access denied on one entry)
-        }
+        } catch { }
     }
-    return $removed
 }
 
 # ---------------------------------------------------------------------------
@@ -57,9 +51,8 @@ Write-Host ""
 
 Write-Step "Removing HKCU registry entries..."
 $hkcu = [Microsoft.Win32.Registry]::CurrentUser
-if (Remove-ContextMenuEntries -hive $hkcu -classesRoot "Software\Classes") {
-    Write-Ok "HKCU entries removed."
-}
+Remove-ContextMenuEntries -hive $hkcu -classesRoot "Software\Classes"
+Write-Ok "HKCU entries removed."
 $hkcu.Close()
 
 # ---------------------------------------------------------------------------
@@ -78,9 +71,8 @@ foreach ($subKey in @("*\shell\CopyWSLPath", "Directory\shell\CopyWSLPath", "Dir
 
 if ($hkcrPresent) {
     if (Test-IsAdmin) {
-        if (Remove-ContextMenuEntries -hive $hkcr -classesRoot "") {
-            Write-Ok "HKCR entries removed."
-        }
+        Remove-ContextMenuEntries -hive $hkcr -classesRoot ""
+        Write-Ok "HKCR entries removed."
     } else {
         Write-Warn "HKCR entries found but admin rights are required to remove them."
         Write-Warn "Re-run this script as administrator to remove them."

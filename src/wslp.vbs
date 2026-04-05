@@ -20,7 +20,6 @@ stream.Type = 1  ' binary
 Dim bytes : bytes = stream.Read
 stream.Close
 
-encoded = CreateObject("Microsoft.XMLHTTP")  ' not used — use DOM instead
 Dim xmlObj : Set xmlObj = CreateObject("MSXML2.DOMDocument")
 Dim xmlElem : Set xmlElem = xmlObj.createElement("b64")
 xmlElem.DataType = "bin.base64"

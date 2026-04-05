@@ -9,13 +9,7 @@ if ($EncodedPath) {
     $bytes     = [Convert]::FromBase64String($EncodedPath)
     $inputPath = [Text.Encoding]::Unicode.GetString($bytes).Trim()
 } elseif ($RawPath) {
-    # Strip a single wrapping pair of quotes if present (e.g. from CMD expansion),
-    # but never strip quotes that are not symmetrically wrapping the whole string.
     $inputPath = $RawPath.Trim()
-    if (($inputPath.StartsWith('"') -and $inputPath.EndsWith('"')) -or
-        ($inputPath.StartsWith("'") -and $inputPath.EndsWith("'"))) {
-        $inputPath = $inputPath.Substring(1, $inputPath.Length - 2)
-    }
 } else {
     Write-Host "Usage: wslp <path>" -ForegroundColor Yellow
     Write-Host "Converts a Windows path to its WSL equivalent and copies it to the clipboard."
@@ -61,7 +55,7 @@ function Convert-ToWslPath([string]$path) {
 $finalPath = Convert-ToWslPath $inputPath
 
 if ($finalPath) {
-    $finalPath = $finalPath.Trim() -replace '//+', '/'
+    $finalPath = $finalPath.Trim()
 
     try {
         Add-Type -AssemblyName System.Windows.Forms

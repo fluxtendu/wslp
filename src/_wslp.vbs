@@ -29,7 +29,7 @@ encoded = Join(Split(encoded, Chr(10)), "")   ' strip LF
 encoded = Join(Split(encoded, Chr(13)), "")   ' strip CR
 
 command = "powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive" & _
-          " -File """ & scriptDir & "\wslp.ps1""" & _
+          " -File """ & scriptDir & "\_wslp.ps1""" & _
           " -EncodedPath """ & encoded & """"
 
 ' 0 = hidden window, True = wait for completion

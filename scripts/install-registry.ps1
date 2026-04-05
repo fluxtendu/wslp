@@ -104,10 +104,10 @@ if (-not $InstallDir) {
     $InstallDir = Split-Path -Parent $PSScriptRoot
 }
 
-$vbsPath = Join-Path $InstallDir "src\wslp.vbs"
+$vbsPath = Join-Path $InstallDir "src\_wslp.vbs"
 
 if (-not (Test-Path -LiteralPath $vbsPath)) {
-    Write-Err "Cannot find wslp.vbs at: $vbsPath"
+    Write-Err "Cannot find _wslp.vbs at: $vbsPath"
     Write-Err "Please specify the correct install directory with -InstallDir."
     exit 1
 }

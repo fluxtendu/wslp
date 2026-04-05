@@ -38,7 +38,7 @@ After install, an interactive script runs to set up optional features (context m
 ### Manual
 
 1. Download or clone this repository.
-2. Copy `src\wslp.ps1`, `src\wslp.cmd`, and `src\wslp.vbs` to a folder of your choice
+2. Copy `src\wslp.cmd`, `src\_wslp.ps1`, and `src\_wslp.vbs` to a folder of your choice
    (e.g. `%LOCALAPPDATA%\Programs\wslp\`).
 3. Add that folder to your PATH (user-level, no admin required):
    ```powershell

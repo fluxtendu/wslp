@@ -21,6 +21,14 @@ if (-not $inputPath) {
     exit 0
 }
 
+# Resolve relative paths (., ..\foo, .\file.txt) to absolute Windows paths.
+# Only applies to paths that look relative — not UNC, not drive-rooted.
+if ($inputPath -notlike '\\*' -and $inputPath -notmatch '^[A-Za-z]:') {
+    try {
+        $inputPath = [IO.Path]::GetFullPath($inputPath)
+    } catch { }
+}
+
 function Convert-ToWslPath([string]$path) {
     # UNC WSL path: \\wsl.localhost\distro\... or \\wsl$\distro\...
     if ($path -like '\\wsl.localhost\*' -or $path -like '\\wsl$\*') {

@@ -4,7 +4,7 @@ Convert Windows paths to WSL paths — and back — from the terminal or right-c
 
 ```
 C:\Users\janot\projects\foo  →  /mnt/c/Users/janot/projects/foo
-\\wsl.localhost\Ubuntu\home\janot  →  /home/janot
+\\wsl.localhost\Ubuntu\home\flxutendu  →  /home/fluxtendu
 ```
 
 The converted path is automatically copied to your clipboard.
@@ -78,20 +78,20 @@ To remove: `scripts\uninstall-registry.ps1`
 
 `cmdp` is the inverse of `wslp`: run it inside WSL to convert a WSL path to a Windows path and copy it to your clipboard.
 
-The installer can set it up automatically. To do it manually:
+The installer copies `cmdp.sh` to `~/.local/share/cmdp/` and tells you the line to add. To do it manually:
 
 ```bash
-# Copy the script
-mkdir -p ~/.local/share/wslp
-cp /path/to/wslp/scripts/cmdp.sh ~/.local/share/wslp/
-
-# Source it in your shell profile
-echo '[ -f "$HOME/.local/share/wslp/cmdp.sh" ] && source "$HOME/.local/share/wslp/cmdp.sh"' >> ~/.zshrc
-# or for bash:
-echo '[ -f "$HOME/.local/share/wslp/cmdp.sh" ] && source "$HOME/.local/share/wslp/cmdp.sh"' >> ~/.bashrc
+mkdir -p ~/.local/share/cmdp
+cp /path/to/wslp/scripts/cmdp.sh ~/.local/share/cmdp/
 ```
 
-Then restart your shell or run `source ~/.local/share/wslp/cmdp.sh`.
+Then add this line to your shell config (`~/.zshrc` or `~/.bashrc`), **before** any prompt initializer (starship, oh-my-zsh…):
+
+```bash
+source "$HOME/.local/share/cmdp/cmdp.sh"
+```
+
+Then restart your shell.
 
 ---
 

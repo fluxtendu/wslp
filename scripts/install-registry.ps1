@@ -204,33 +204,28 @@ if ($installCmdp) {
         # (spaces, $, backticks…) can be interpreted by the bash script.
         $installScript = @'
 set -e
-DEST="$HOME/.local/share/wslp"
+DEST="$HOME/.local/share/cmdp"
 mkdir -p "$DEST"
 cp "$WSLP_CMDP_SRC" "$DEST/cmdp.sh"
 chmod +x "$DEST/cmdp.sh"
-SOURCE_LINE='[ -f "$HOME/.local/share/wslp/cmdp.sh" ] && source "$HOME/.local/share/wslp/cmdp.sh"'
-for RC in "$HOME/.zshrc" "$HOME/.bashrc"; do
-    if [ -f "$RC" ] && ! grep -qF "wslp/cmdp.sh" "$RC"; then
-        printf '\n# wslp\n%s\n' "$SOURCE_LINE" >> "$RC"
-        echo "Added to $RC"
-    fi
-done
-echo "cmdp installed. Restart your WSL shell or run: source ~/.local/share/wslp/cmdp.sh"
+echo "$DEST/cmdp.sh"
 '@
 
         Write-Step "Installing cmdp in WSL..."
         try {
-            # Convert the Windows path to a WSL path directly in PowerShell.
-            # We cannot use wslpath here: wsl.exe strips backslashes before
-            # passing arguments to the Linux process, making it unreliable.
             $drive = $cmdpSrc.Substring(0, 1).ToLower()
             $rest  = $cmdpSrc.Substring(2).Replace('\', '/')
             $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
-            # WSLENV controls which Windows env vars are passed into WSL
             $env:WSLENV = 'WSLP_CMDP_SRC'
             $output = $installScript | & wsl.exe bash 2>&1
             $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
-            Write-Ok "cmdp installed in WSL."
+            Write-Ok "cmdp copied to ~/.local/share/cmdp/cmdp.sh"
+            Write-Host ""
+            Write-Host "  To activate cmdp, add this line to your shell config" -ForegroundColor White
+            Write-Host "  BEFORE any prompt initializer (starship, oh-my-zsh...):" -ForegroundColor White
+            Write-Host ""
+            Write-Host '    source "$HOME/.local/share/cmdp/cmdp.sh"' -ForegroundColor Cyan
+            Write-Host ""
         } catch {
             Write-Err "Failed to install cmdp in WSL: $_"
         } finally {

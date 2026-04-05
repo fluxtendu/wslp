@@ -86,20 +86,14 @@ $hkcr.Close()
 
 Write-Step "Checking cmdp in WSL..."
 $cleanupScript = @'
-DEST="$HOME/.local/share/wslp"
+DEST="$HOME/.local/share/cmdp"
 if [ -d "$DEST" ]; then
     rm -rf "$DEST"
     echo "Removed $DEST"
+    echo "Note: if you sourced cmdp.sh in your shell config, remove that line manually."
+else
+    echo "Nothing to remove."
 fi
-for RC in "$HOME/.zshrc" "$HOME/.bashrc"; do
-    if [ -f "$RC" ] && grep -qF "wslp/cmdp.sh" "$RC"; then
-        # Remove only the exact lines added by the installer, nothing else.
-        # The pattern anchors on the exact marker comment to avoid false matches.
-        sed -i '/^# wslp$/{N; /\n.*wslp\/cmdp\.sh/d}' "$RC"
-        sed -i '/wslp\/cmdp\.sh/d' "$RC"
-        echo "Cleaned $RC"
-    fi
-done
 '@
 
 $wslAvailable = $false

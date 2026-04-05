@@ -2,9 +2,8 @@
 #
 # Usage: cmdp <path>
 #
-# Source this file in your shell profile:
-#   echo '[ -f "$HOME/.local/share/wslp/cmdp.sh" ] && source "$HOME/.local/share/wslp/cmdp.sh"' >> ~/.zshrc
-#   echo '[ -f "$HOME/.local/share/wslp/cmdp.sh" ] && source "$HOME/.local/share/wslp/cmdp.sh"' >> ~/.bashrc
+# Add this line to your shell config (before any prompt init like starship):
+#   source "$HOME/.local/share/cmdp/cmdp.sh"
 
 cmdp() {
     if [[ -z "$1" ]]; then

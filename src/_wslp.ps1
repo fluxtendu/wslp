@@ -9,7 +9,9 @@ if ($EncodedPath) {
     $bytes     = [Convert]::FromBase64String($EncodedPath)
     $inputPath = [Text.Encoding]::Unicode.GetString($bytes).Trim()
 } elseif ($RawPath) {
-    $inputPath = $RawPath.Trim()
+    # %~1 in CMD strips surrounding quotes, but "C:\foo\" leaves a spurious
+    # trailing " because the backslash escapes the closing quote at parse time.
+    $inputPath = $RawPath.Trim().TrimEnd('"')
 } else {
     Write-Host "Usage: wslp <path>" -ForegroundColor Yellow
     Write-Host "Converts a Windows path to its WSL equivalent and copies it to the clipboard."

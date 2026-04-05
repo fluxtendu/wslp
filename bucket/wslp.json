@@ -1,0 +1,20 @@
+{
+    "version": "1.0.0",
+    "description": "Convert Windows paths to WSL paths (and back) from the terminal or right-click menu.",
+    "homepage": "https://github.com/fluxtendu/wslp",
+    "license": "MIT",
+    "url": "https://github.com/fluxtendu/wslp/archive/refs/tags/v1.0.0.zip",
+    "hash": "TODO_SHA256_AFTER_RELEASE",
+    "extract_dir": "wslp-1.0.0",
+    "bin": [
+        ["src\\wslp.cmd", "wslp"]
+    ],
+    "post_install": "& \"$dir\\scripts\\install-registry.ps1\" -InstallDir \"$dir\"",
+    "pre_uninstall": "& \"$dir\\scripts\\uninstall-registry.ps1\"",
+    "checkver": {
+        "github": "https://github.com/fluxtendu/wslp"
+    },
+    "autoupdate": {
+        "url": "https://github.com/fluxtendu/wslp/archive/refs/tags/v$version.zip"
+    }
+}

@@ -43,7 +43,7 @@ function Convert-ToWslPath([string]$path) {
 
     # Physical drive path: try wslpath first (most accurate)
     try {
-        $result = & wsl.exe wslpath -u $path 2>$null
+        $result = & wsl.exe wslpath -u "$path" 2>$null
         if ($LASTEXITCODE -eq 0 -and $result -and $result -notlike '*wslpath:*') {
             return $result.Trim()
         }

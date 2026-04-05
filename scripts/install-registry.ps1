@@ -220,12 +220,12 @@ echo "cmdp installed. Restart your WSL shell or run: source ~/.local/share/wslp/
 
         Write-Step "Installing cmdp in WSL..."
         try {
-            # Convert Windows path to WSL path and expose as env var inside WSL.
-            # The path must be passed as a single quoted argument to wsl.exe —
-            # without quotes, PowerShell's argument binder strips backslashes.
-            $cmdpWslSrc = & wsl.exe wslpath -u "$cmdpSrc" 2>$null
-            if (-not $cmdpWslSrc) { throw "wslpath could not convert: $cmdpSrc" }
-            $env:WSLP_CMDP_SRC = $cmdpWslSrc.Trim()
+            # Convert the Windows path to a WSL path directly in PowerShell.
+            # We cannot use wslpath here: wsl.exe strips backslashes before
+            # passing arguments to the Linux process, making it unreliable.
+            $drive = $cmdpSrc.Substring(0, 1).ToLower()
+            $rest  = $cmdpSrc.Substring(2).Replace('\', '/')
+            $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
             $output = $installScript | & wsl.exe bash 2>&1
             $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
             Write-Ok "cmdp installed in WSL."

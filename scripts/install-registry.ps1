@@ -136,26 +136,26 @@ if ($installMenu) {
     if ($menuStyle -eq "modern") {
         # Write to HKCR (requires admin) — visible in Win11 modern menu
         $roots = @(
-            @{ key = "HKCR:\*\shell\CopyWSLPath\command";                  cmd = $wscriptCmd   },
-            @{ key = "HKCR:\Directory\shell\CopyWSLPath\command";          cmd = $wscriptCmd   },
-            @{ key = "HKCR:\Directory\Background\shell\CopyWSLPath\command"; cmd = $wscriptCmdBg }
+            @{ key = "Registry::HKEY_CLASSES_ROOT\*\shell\CopyWSLPath\command";                    cmd = $wscriptCmd   },
+            @{ key = "Registry::HKEY_CLASSES_ROOT\Directory\shell\CopyWSLPath\command";            cmd = $wscriptCmd   },
+            @{ key = "Registry::HKEY_CLASSES_ROOT\Directory\Background\shell\CopyWSLPath\command"; cmd = $wscriptCmdBg }
         )
         $parentKeys = @(
-            "HKCR:\*\shell\CopyWSLPath",
-            "HKCR:\Directory\shell\CopyWSLPath",
-            "HKCR:\Directory\Background\shell\CopyWSLPath"
+            "Registry::HKEY_CLASSES_ROOT\*\shell\CopyWSLPath",
+            "Registry::HKEY_CLASSES_ROOT\Directory\shell\CopyWSLPath",
+            "Registry::HKEY_CLASSES_ROOT\Directory\Background\shell\CopyWSLPath"
         )
     } else {
         # Write to HKCU\Software\Classes (no admin) — visible with Shift+right-click on Win11
         $roots = @(
-            @{ key = "HKCU:\Software\Classes\*\shell\CopyWSLPath\command";                  cmd = $wscriptCmd   },
-            @{ key = "HKCU:\Software\Classes\Directory\shell\CopyWSLPath\command";          cmd = $wscriptCmd   },
-            @{ key = "HKCU:\Software\Classes\Directory\Background\shell\CopyWSLPath\command"; cmd = $wscriptCmdBg }
+            @{ key = "Registry::HKEY_CURRENT_USER\Software\Classes\*\shell\CopyWSLPath\command";                    cmd = $wscriptCmd   },
+            @{ key = "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\shell\CopyWSLPath\command";            cmd = $wscriptCmd   },
+            @{ key = "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\CopyWSLPath\command"; cmd = $wscriptCmdBg }
         )
         $parentKeys = @(
-            "HKCU:\Software\Classes\*\shell\CopyWSLPath",
-            "HKCU:\Software\Classes\Directory\shell\CopyWSLPath",
-            "HKCU:\Software\Classes\Directory\Background\shell\CopyWSLPath"
+            "Registry::HKEY_CURRENT_USER\Software\Classes\*\shell\CopyWSLPath",
+            "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\shell\CopyWSLPath",
+            "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\CopyWSLPath"
         )
     }
 
@@ -166,16 +166,16 @@ if ($installMenu) {
             $parentKey = $parentKeys[$i]
             $entry     = $roots[$i]
 
-            if (-not (Test-Path $parentKey)) {
+            if (-not (Test-Path -LiteralPath $parentKey)) {
                 New-Item -Path $parentKey -Force | Out-Null
             }
-            Set-ItemProperty -Path $parentKey -Name "(default)" -Value "Copy WSL path"
-            Set-ItemProperty -Path $parentKey -Name "Icon"      -Value "wsl.exe"
+            Set-ItemProperty -LiteralPath $parentKey -Name "(default)" -Value "Copy WSL path"
+            Set-ItemProperty -LiteralPath $parentKey -Name "Icon"      -Value "wsl.exe"
 
-            if (-not (Test-Path $entry.key)) {
+            if (-not (Test-Path -LiteralPath $entry.key)) {
                 New-Item -Path $entry.key -Force | Out-Null
             }
-            Set-ItemProperty -Path $entry.key -Name "(default)" -Value $entry.cmd
+            Set-ItemProperty -LiteralPath $entry.key -Name "(default)" -Value $entry.cmd
         }
         Write-Ok "Context menu installed ($menuStyle)."
     } catch {

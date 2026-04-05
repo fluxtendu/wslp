@@ -30,16 +30,16 @@ Write-Host ""
 # ---------------------------------------------------------------------------
 
 $hkcuKeys = @(
-    "HKCU:\Software\Classes\*\shell\CopyWSLPath",
-    "HKCU:\Software\Classes\Directory\shell\CopyWSLPath",
-    "HKCU:\Software\Classes\Directory\Background\shell\CopyWSLPath"
+    "Registry::HKEY_CURRENT_USER\Software\Classes\*\shell\CopyWSLPath",
+    "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\shell\CopyWSLPath",
+    "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\CopyWSLPath"
 )
 
 Write-Step "Removing HKCU registry entries..."
 $removedAny = $false
 foreach ($key in $hkcuKeys) {
-    if (Test-Path $key) {
-        Remove-Item -Path $key -Recurse -Force
+    if (Test-Path -LiteralPath $key) {
+        Remove-Item -LiteralPath $key -Recurse -Force
         $removedAny = $true
     }
 }
@@ -50,19 +50,19 @@ if ($removedAny) { Write-Ok "HKCU entries removed." }
 # ---------------------------------------------------------------------------
 
 $hkcrKeys = @(
-    "HKCR:\*\shell\CopyWSLPath",
-    "HKCR:\Directory\shell\CopyWSLPath",
-    "HKCR:\Directory\Background\shell\CopyWSLPath"
+    "Registry::HKEY_CLASSES_ROOT\*\shell\CopyWSLPath",
+    "Registry::HKEY_CLASSES_ROOT\Directory\shell\CopyWSLPath",
+    "Registry::HKEY_CLASSES_ROOT\Directory\Background\shell\CopyWSLPath"
 )
 
-$hkcrPresent = $hkcrKeys | Where-Object { Test-Path $_ }
+$hkcrPresent = $hkcrKeys | Where-Object { Test-Path -LiteralPath $_ }
 
 if ($hkcrPresent) {
     if (Test-IsAdmin) {
         Write-Step "Removing HKCR registry entries..."
         foreach ($key in $hkcrKeys) {
-            if (Test-Path $key) {
-                Remove-Item -Path $key -Recurse -Force
+            if (Test-Path -LiteralPath $key) {
+                Remove-Item -LiteralPath $key -Recurse -Force
             }
         }
         Write-Ok "HKCR entries removed."

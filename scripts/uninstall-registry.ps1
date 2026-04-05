@@ -21,6 +21,32 @@ function Test-IsAdmin {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+# ---------------------------------------------------------------------------
+# Registry helpers — always use Win32 API directly to avoid any shell
+# interpretation of special characters (e.g. the literal "*" key name)
+# ---------------------------------------------------------------------------
+
+function Remove-ContextMenuEntries([Microsoft.Win32.RegistryKey]$hive, [string]$classesRoot) {
+    $subKeys = @(
+        "$classesRoot\*\shell\CopyWSLPath",
+        "$classesRoot\Directory\shell\CopyWSLPath",
+        "$classesRoot\Directory\Background\shell\CopyWSLPath"
+    )
+    $removed = $false
+    foreach ($subKey in $subKeys) {
+        try {
+            # DeleteSubKeyTree(name, throwOnMissingSubKey: false) — safe no-op if absent
+            $hive.DeleteSubKeyTree($subKey, $false)
+            $removed = $true
+        } catch {
+            # Silently ignore individual failures (e.g. access denied on one entry)
+        }
+    }
+    return $removed
+}
+
+# ---------------------------------------------------------------------------
+
 Write-Host ""
 Write-Host "  wslp — uninstall" -ForegroundColor White
 Write-Host ""
@@ -29,49 +55,38 @@ Write-Host ""
 # Registry: HKCU (no admin needed)
 # ---------------------------------------------------------------------------
 
-$hkcuKeys = @(
-    "Registry::HKEY_CURRENT_USER\Software\Classes\*\shell\CopyWSLPath",
-    "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\shell\CopyWSLPath",
-    "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\CopyWSLPath"
-)
-
 Write-Step "Removing HKCU registry entries..."
-$removedAny = $false
-foreach ($key in $hkcuKeys) {
-    if (Test-Path -LiteralPath $key) {
-        Remove-Item -LiteralPath $key -Recurse -Force
-        $removedAny = $true
-    }
+$hkcu = [Microsoft.Win32.Registry]::CurrentUser
+if (Remove-ContextMenuEntries -hive $hkcu -classesRoot "Software\Classes") {
+    Write-Ok "HKCU entries removed."
 }
-if ($removedAny) { Write-Ok "HKCU entries removed." }
+$hkcu.Close()
 
 # ---------------------------------------------------------------------------
 # Registry: HKCR (admin needed)
 # ---------------------------------------------------------------------------
 
-$hkcrKeys = @(
-    "Registry::HKEY_CLASSES_ROOT\*\shell\CopyWSLPath",
-    "Registry::HKEY_CLASSES_ROOT\Directory\shell\CopyWSLPath",
-    "Registry::HKEY_CLASSES_ROOT\Directory\Background\shell\CopyWSLPath"
-)
+Write-Step "Checking HKCR registry entries..."
+$hkcr = [Microsoft.Win32.Registry]::ClassesRoot
 
-$hkcrPresent = $hkcrKeys | Where-Object { Test-Path -LiteralPath $_ }
+# Probe without deleting first to give a useful message if admin is missing
+$hkcrPresent = $false
+foreach ($subKey in @("*\shell\CopyWSLPath", "Directory\shell\CopyWSLPath", "Directory\Background\shell\CopyWSLPath")) {
+    $probe = $hkcr.OpenSubKey($subKey, $false)
+    if ($null -ne $probe) { $probe.Close(); $hkcrPresent = $true; break }
+}
 
 if ($hkcrPresent) {
     if (Test-IsAdmin) {
-        Write-Step "Removing HKCR registry entries..."
-        foreach ($key in $hkcrKeys) {
-            if (Test-Path -LiteralPath $key) {
-                Remove-Item -LiteralPath $key -Recurse -Force
-            }
+        if (Remove-ContextMenuEntries -hive $hkcr -classesRoot "") {
+            Write-Ok "HKCR entries removed."
         }
-        Write-Ok "HKCR entries removed."
     } else {
         Write-Warn "HKCR entries found but admin rights are required to remove them."
-        Write-Warn "Run this script as administrator, or remove manually:"
-        $hkcrKeys | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+        Write-Warn "Re-run this script as administrator to remove them."
     }
 }
+$hkcr.Close()
 
 # ---------------------------------------------------------------------------
 # cmdp (WSL)
@@ -86,15 +101,13 @@ if [ -d "$DEST" ]; then
 fi
 for RC in "$HOME/.zshrc" "$HOME/.bashrc"; do
     if [ -f "$RC" ] && grep -q "wslp/cmdp.sh" "$RC"; then
-        # Remove the wslp block (comment + source line)
-        sed -i '/# wslp - Windows path converter/{N;d}' "$RC"
-        sed -i '/wslp\/cmdp\.sh/d' "$RC"
+        sed -i '/# wslp$/d; /wslp\/cmdp\.sh/d' "$RC"
         echo "Cleaned $RC"
     fi
 done
 '@
 
-$wslCheck = & wsl.exe --status 2>$null
+$null = & wsl.exe --status 2>$null
 if ($LASTEXITCODE -eq 0) {
     $output = $cleanupScript | & wsl.exe bash 2>&1
     $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }

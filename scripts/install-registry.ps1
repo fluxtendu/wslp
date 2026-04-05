@@ -16,9 +16,7 @@
 #>
 
 param(
-    # Non-interactive mode: skip all prompts and install with defaults
     [switch]$Silent,
-    # Install path of wslp (defaults to the directory containing this script's parent)
     [string]$InstallDir
 )
 
@@ -29,24 +27,13 @@ $ErrorActionPreference = "Stop"
 # Helpers
 # ---------------------------------------------------------------------------
 
-function Write-Step([string]$msg) {
-    Write-Host "  $msg" -ForegroundColor Cyan
-}
-
-function Write-Ok([string]$msg) {
-    Write-Host "  [OK] $msg" -ForegroundColor Green
-}
-
-function Write-Warn([string]$msg) {
-    Write-Host "  [!]  $msg" -ForegroundColor Yellow
-}
-
-function Write-Err([string]$msg) {
-    Write-Host "  [X]  $msg" -ForegroundColor Red
-}
+function Write-Step([string]$msg) { Write-Host "  $msg" -ForegroundColor Cyan }
+function Write-Ok([string]$msg)   { Write-Host "  [OK] $msg" -ForegroundColor Green }
+function Write-Warn([string]$msg) { Write-Host "  [!]  $msg" -ForegroundColor Yellow }
+function Write-Err([string]$msg)  { Write-Host "  [X]  $msg" -ForegroundColor Red }
 
 function Prompt-YesNo([string]$question, [bool]$default = $true) {
-    $hint = if ($default) { "[Y/n]" } else { "[y/N]" }
+    $hint   = if ($default) { "[Y/n]" } else { "[y/N]" }
     $answer = Read-Host "$question $hint"
     if ([string]::IsNullOrWhiteSpace($answer)) { return $default }
     return $answer -match "^[Yy]"
@@ -60,9 +47,53 @@ function Test-IsAdmin {
 
 function Restart-AsAdmin([string]$scriptPath, [string]$installDir) {
     Write-Warn "Restarting as administrator..."
-    $args = "-ExecutionPolicy Bypass -NoProfile -File `"$scriptPath`""
-    if ($installDir) { $args += " -InstallDir `"$installDir`"" }
-    Start-Process powershell.exe -ArgumentList $args -Verb RunAs -Wait
+    $psArgs = "-ExecutionPolicy Bypass -NoProfile -File `"$scriptPath`""
+    if ($installDir) { $psArgs += " -InstallDir `"$installDir`"" }
+    Start-Process powershell.exe -ArgumentList $psArgs -Verb RunAs -Wait
+}
+
+# ---------------------------------------------------------------------------
+# Registry helpers — always use Win32 API directly to avoid any shell
+# interpretation of special characters (e.g. the literal "*" key name)
+# ---------------------------------------------------------------------------
+
+function Set-RegistryEntry {
+    param(
+        [Microsoft.Win32.RegistryKey]$hive,
+        [string]$subKeyPath,
+        [string]$defaultValue,
+        [hashtable]$properties = @{}
+    )
+    $key = $hive.OpenSubKey($subKeyPath, $true)
+    if ($null -eq $key) {
+        $key = $hive.CreateSubKey($subKeyPath, $true)
+    }
+    $key.SetValue('', $defaultValue)
+    foreach ($name in $properties.Keys) {
+        $key.SetValue($name, $properties[$name])
+    }
+    $key.Close()
+}
+
+function Set-ContextMenuEntries {
+    param(
+        [Microsoft.Win32.RegistryKey]$hive,
+        [string]$classesRoot,  # e.g. "" for HKCR, "Software\Classes" for HKCU
+        [string]$vbsPath
+    )
+
+    $entries = @(
+        @{ parent = "$classesRoot\*\shell\CopyWSLPath";                    cmd = "wscript.exe `"$vbsPath`" `"%1`"" },
+        @{ parent = "$classesRoot\Directory\shell\CopyWSLPath";            cmd = "wscript.exe `"$vbsPath`" `"%1`"" },
+        @{ parent = "$classesRoot\Directory\Background\shell\CopyWSLPath"; cmd = "wscript.exe `"$vbsPath`" `"%V`"" }
+    )
+
+    foreach ($entry in $entries) {
+        Set-RegistryEntry -hive $hive -subKeyPath $entry.parent `
+            -defaultValue "Copy WSL path" -properties @{ Icon = "wsl.exe" }
+        Set-RegistryEntry -hive $hive -subKeyPath "$($entry.parent)\command" `
+            -defaultValue $entry.cmd
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -70,14 +101,12 @@ function Restart-AsAdmin([string]$scriptPath, [string]$installDir) {
 # ---------------------------------------------------------------------------
 
 if (-not $InstallDir) {
-    # When called by Scoop, this script lives in <scoop>/apps/wslp/current/scripts/
-    # The binaries are in <scoop>/apps/wslp/current/src/
     $InstallDir = Split-Path -Parent $PSScriptRoot
 }
 
 $vbsPath = Join-Path $InstallDir "src\wslp.vbs"
 
-if (-not (Test-Path $vbsPath)) {
+if (-not (Test-Path -LiteralPath $vbsPath)) {
     Write-Err "Cannot find wslp.vbs at: $vbsPath"
     Write-Err "Please specify the correct install directory with -InstallDir."
     exit 1
@@ -104,9 +133,9 @@ if ($installMenu) {
     Write-Host ""
     Write-Host "  Choose context menu style:" -ForegroundColor White
     Write-Host "    1. Classic  (Shift+right-click on Win11, always visible on Win10)" -ForegroundColor Gray
-    Write-Host "       → No admin required" -ForegroundColor DarkGray
+    Write-Host "       No admin required" -ForegroundColor DarkGray
     Write-Host "    2. Modern   (always visible in Win11 right-click menu)" -ForegroundColor Gray
-    Write-Host "       → Requires admin rights" -ForegroundColor DarkGray
+    Write-Host "       Requires admin rights" -ForegroundColor DarkGray
     Write-Host ""
 
     $menuStyle = if ($Silent) {
@@ -116,67 +145,27 @@ if ($installMenu) {
         if ($choice -eq "2") { "modern" } else { "classic" }
     }
 
-    $wscriptCmd = "wscript.exe `"$vbsPath`" `"%1`""
-    $wscriptCmdBg = "wscript.exe `"$vbsPath`" `"%V`""
-
-    if ($menuStyle -eq "modern") {
-        if (-not (Test-IsAdmin)) {
-            Write-Warn "Modern menu requires admin rights."
-            $restart = Prompt-YesNo "Restart this script as administrator?"
-            if ($restart) {
-                Restart-AsAdmin $PSCommandPath $InstallDir
-                exit 0
-            } else {
-                Write-Warn "Skipping modern menu. Falling back to classic."
-                $menuStyle = "classic"
-            }
+    if ($menuStyle -eq "modern" -and -not (Test-IsAdmin)) {
+        Write-Warn "Modern menu requires admin rights."
+        $restart = Prompt-YesNo "Restart this script as administrator?"
+        if ($restart) {
+            Restart-AsAdmin $PSCommandPath $InstallDir
+            exit 0
         }
-    }
-
-    if ($menuStyle -eq "modern") {
-        # Write to HKCR (requires admin) — visible in Win11 modern menu
-        $roots = @(
-            @{ key = "Registry::HKEY_CLASSES_ROOT\*\shell\CopyWSLPath\command";                    cmd = $wscriptCmd   },
-            @{ key = "Registry::HKEY_CLASSES_ROOT\Directory\shell\CopyWSLPath\command";            cmd = $wscriptCmd   },
-            @{ key = "Registry::HKEY_CLASSES_ROOT\Directory\Background\shell\CopyWSLPath\command"; cmd = $wscriptCmdBg }
-        )
-        $parentKeys = @(
-            "Registry::HKEY_CLASSES_ROOT\*\shell\CopyWSLPath",
-            "Registry::HKEY_CLASSES_ROOT\Directory\shell\CopyWSLPath",
-            "Registry::HKEY_CLASSES_ROOT\Directory\Background\shell\CopyWSLPath"
-        )
-    } else {
-        # Write to HKCU\Software\Classes (no admin) — visible with Shift+right-click on Win11
-        $roots = @(
-            @{ key = "Registry::HKEY_CURRENT_USER\Software\Classes\*\shell\CopyWSLPath\command";                    cmd = $wscriptCmd   },
-            @{ key = "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\shell\CopyWSLPath\command";            cmd = $wscriptCmd   },
-            @{ key = "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\CopyWSLPath\command"; cmd = $wscriptCmdBg }
-        )
-        $parentKeys = @(
-            "Registry::HKEY_CURRENT_USER\Software\Classes\*\shell\CopyWSLPath",
-            "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\shell\CopyWSLPath",
-            "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\CopyWSLPath"
-        )
+        Write-Warn "Falling back to classic menu."
+        $menuStyle = "classic"
     }
 
     Write-Step "Writing registry keys ($menuStyle)..."
-
     try {
-        foreach ($i in 0..($parentKeys.Length - 1)) {
-            $parentKey = $parentKeys[$i]
-            $entry     = $roots[$i]
-
-            if (-not (Test-Path -LiteralPath $parentKey)) {
-                New-Item -Path $parentKey -Force | Out-Null
-            }
-            Set-ItemProperty -LiteralPath $parentKey -Name "(default)" -Value "Copy WSL path"
-            Set-ItemProperty -LiteralPath $parentKey -Name "Icon"      -Value "wsl.exe"
-
-            if (-not (Test-Path -LiteralPath $entry.key)) {
-                New-Item -Path $entry.key -Force | Out-Null
-            }
-            Set-ItemProperty -LiteralPath $entry.key -Name "(default)" -Value $entry.cmd
+        if ($menuStyle -eq "modern") {
+            $hive = [Microsoft.Win32.Registry]::ClassesRoot
+            Set-ContextMenuEntries -hive $hive -classesRoot "" -vbsPath $vbsPath
+        } else {
+            $hive = [Microsoft.Win32.Registry]::CurrentUser
+            Set-ContextMenuEntries -hive $hive -classesRoot "Software\Classes" -vbsPath $vbsPath
         }
+        $hive.Close()
         Write-Ok "Context menu installed ($menuStyle)."
     } catch {
         Write-Err "Failed to write registry: $_"
@@ -193,13 +182,11 @@ $installCmdp = if ($Silent) { $false } else {
 }
 
 if ($installCmdp) {
-    # Check WSL is available
-    $wslCheck = & wsl.exe --status 2>$null
+    $null = & wsl.exe --status 2>$null
     if ($LASTEXITCODE -ne 0) {
         Write-Warn "WSL does not appear to be installed or running. Skipping cmdp."
     } else {
-        $cmdpSrc = Join-Path $InstallDir "scripts\cmdp.sh"
-        # Convert to WSL path
+        $cmdpSrc    = Join-Path $InstallDir "scripts\cmdp.sh"
         $cmdpWslSrc = (& wsl.exe wslpath -u "$cmdpSrc" 2>$null).Trim()
 
         $installScript = @"
@@ -208,14 +195,10 @@ DEST="\$HOME/.local/share/wslp"
 mkdir -p "\$DEST"
 cp "$cmdpWslSrc" "\$DEST/cmdp.sh"
 chmod +x "\$DEST/cmdp.sh"
-
-SOURCE_LINE="[ -f \"\$HOME/.local/share/wslp/cmdp.sh\" ] && source \"\$HOME/.local/share/wslp/cmdp.sh\""
-
+SOURCE_LINE='[ -f "\$HOME/.local/share/wslp/cmdp.sh" ] && source "\$HOME/.local/share/wslp/cmdp.sh"'
 for RC in "\$HOME/.zshrc" "\$HOME/.bashrc"; do
     if [ -f "\$RC" ] && ! grep -qF "wslp/cmdp.sh" "\$RC"; then
-        echo "" >> "\$RC"
-        echo "# wslp - Windows path converter" >> "\$RC"
-        echo "\$SOURCE_LINE" >> "\$RC"
+        printf '\n# wslp\n%s\n' "\$SOURCE_LINE" >> "\$RC"
         echo "Added to \$RC"
     fi
 done

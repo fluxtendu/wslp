@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Installs optional wslp features: context menu and/or WSL cmdp function.
@@ -79,19 +79,22 @@ function Set-ContextMenuEntries {
     param(
         [Microsoft.Win32.RegistryKey]$hive,
         [string]$classesRoot,  # e.g. "" for HKCR, "Software\Classes" for HKCU
-        [string]$vbsPath
+        [string]$ubpPath,
+        [string]$ps1Path
     )
 
+    $cmd = "`"$ubpPath`" `"powershell.exe`" `"-ExecutionPolicy`" `"Bypass`" `"-NoProfile`" `"-NonInteractive`" `"-File`" `"$ps1Path`" `"-RawPath`" `"%V`""
+
     $entries = @(
-        @{ parent = "$classesRoot\*\shell\CopyWSLPath";           cmd = "wscript.exe `"$vbsPath`" `"%1`"" },
-        @{ parent = "$classesRoot\Directory\shell\CopyWSLPath";   cmd = "wscript.exe `"$vbsPath`" `"%1`"" }
+        "$classesRoot\*\shell\CopyWSLPath",
+        "$classesRoot\Directory\shell\CopyWSLPath"
     )
 
     foreach ($entry in $entries) {
-        Set-RegistryEntry -hive $hive -subKeyPath $entry.parent `
+        Set-RegistryEntry -hive $hive -subKeyPath $entry `
             -defaultValue "Copy WSL path" -properties @{ Icon = "wsl.exe" }
-        Set-RegistryEntry -hive $hive -subKeyPath "$($entry.parent)\command" `
-            -defaultValue $entry.cmd
+        Set-RegistryEntry -hive $hive -subKeyPath "$entry\command" `
+            -defaultValue $cmd
     }
 }
 
@@ -103,10 +106,11 @@ if (-not $InstallDir) {
     $InstallDir = Split-Path -Parent $PSScriptRoot
 }
 
-$vbsPath = Join-Path $InstallDir "src\_wslp.vbs"
+$ubpPath = Join-Path $InstallDir "src\ubp.exe"
+$ps1Path = Join-Path $InstallDir "src\_wslp.ps1"
 
-if (-not (Test-Path -LiteralPath $vbsPath)) {
-    Write-Err "Cannot find _wslp.vbs at: $vbsPath"
+if (-not (Test-Path -LiteralPath $ubpPath)) {
+    Write-Err "Cannot find ubp.exe at: $ubpPath"
     Write-Err "Please specify the correct install directory with -InstallDir."
     exit 1
 }
@@ -159,10 +163,10 @@ if ($installMenu) {
     try {
         if ($menuStyle -eq "modern") {
             $hive = [Microsoft.Win32.Registry]::ClassesRoot
-            Set-ContextMenuEntries -hive $hive -classesRoot "" -vbsPath $vbsPath
+            Set-ContextMenuEntries -hive $hive -classesRoot "" -ubpPath $ubpPath -ps1Path $ps1Path
         } else {
             $hive = [Microsoft.Win32.Registry]::CurrentUser
-            Set-ContextMenuEntries -hive $hive -classesRoot "Software\Classes" -vbsPath $vbsPath
+            Set-ContextMenuEntries -hive $hive -classesRoot "Software\Classes" -ubpPath $ubpPath -ps1Path $ps1Path
         }
         $hive.Close()
         Write-Ok "Context menu installed ($menuStyle)."
@@ -205,7 +209,7 @@ echo "$DEST/cmdp.sh"
         Write-Ok "cmdp copied to ~/.local/share/cmdp/cmdp.sh"
         Write-Host ""
         Write-Host "  To activate cmdp, add this line to your shell config" -ForegroundColor White
-        Write-Host "  BEFORE any prompt initializer (starship, oh-my-zsh...):" -ForegroundColor White
+        Write-Host "  BEFORE any prompt initializer [starship, oh-my-zsh...]:" -ForegroundColor White
         Write-Host ""
         Write-Host '    source "$HOME/.local/share/cmdp/cmdp.sh"  # cmdp: convert WSL path → Windows path + clipboard' -ForegroundColor Cyan
         Write-Host ""

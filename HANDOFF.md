@@ -91,7 +91,7 @@ bucket/
 ## Points techniques importants à retenir
 
 - **Registre** : toutes les opérations passent par `Microsoft.Win32.Registry` (API .NET directe), jamais par le provider PowerShell, à cause de la clé nommée `*` (étoile littérale) qui serait interprétée comme wildcard.
-- **Encodage VBS → PS** : le chemin est encodé en base64 UTF-16LE dans `_wslp.vbs` via ADODB.Stream (text mode utf-16le → binary read en skippant les 2 octets de BOM), puis décodé dans `_wslp.ps1` avec `[Text.Encoding]::Unicode.GetString()`.
+- **Encodage VBS → PS (obsolète)** : le chemin était encodé en base64 UTF-16LE dans `_wslp.vbs` via ADODB.Stream. **Décision : remplacer par Unicode Path Bridge (UPB)**, un micro-exécutable .NET qui capture nativement l'Unicode via `GetCommandLineW`. Repo : https://github.com/erratos/unicode-path-bridge
 - **Variables d'env vers WSL** : il faut lister la variable dans `$env:WSLENV` pour qu'elle soit transmise aux processus WSL.
 - **wslpath via wsl.exe** : `wsl.exe wslpath -u $path` sans guillemets perd les backslashes. Toujours passer `"$path"` avec guillemets doubles. Sur certains setups wslpath échoue quand même — le fallback manuel (regex `^([A-Za-z]):(.*)` → `/mnt/x/...`) prend le relais.
 - **Trailing backslash CMD** : `"C:\foo\"` en CMD → `%~1` donne `C:\foo"` (le `\` escape le `"`). Corrigé par `TrimEnd('"')` dans `_wslp.ps1`.

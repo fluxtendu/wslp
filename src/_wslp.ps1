@@ -1,14 +1,8 @@
 Param(
-    [string]$RawPath,
-    [string]$EncodedPath
+    [string]$RawPath
 )
 
-# -EncodedPath is sent by wslp.vbs: the path is base64-encoded UTF-16LE,
-# which guarantees no special character can corrupt the command line.
-if ($EncodedPath) {
-    $bytes     = [Convert]::FromBase64String($EncodedPath)
-    $inputPath = [Text.Encoding]::Unicode.GetString($bytes).Trim()
-} elseif ($RawPath) {
+if ($RawPath) {
     # %~1 in CMD strips surrounding quotes, but "C:\foo\" leaves a spurious
     # trailing " because the backslash escapes the closing quote at parse time.
     $inputPath = $RawPath.Trim().TrimEnd('"')
@@ -46,12 +40,16 @@ function Convert-ToWslPath([string]$path) {
 
     # Physical drive path: try wslpath first (most accurate)
     try {
+        $savedEncoding = [Console]::OutputEncoding
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $result = & wsl.exe wslpath -u "$path" 2>$null
-        if ($LASTEXITCODE -eq 0 -and $result -and $result -notlike '*wslpath:*') {
+        if ($LASTEXITCODE -eq 0 -and $result -and $result.StartsWith('/')) {
             return $result.Trim()
         }
     } catch {
         # wsl.exe not found or failed — fall through to manual conversion
+    } finally {
+        [Console]::OutputEncoding = $savedEncoding
     }
 
     # Fallback: manual reconstruction

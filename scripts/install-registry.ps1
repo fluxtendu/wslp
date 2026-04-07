@@ -7,12 +7,8 @@
     This script is called automatically by Scoop after installing wslp,
     but can also be run standalone. All features are optional.
 
-    - Context menu: right-click "Copy WSL path" on files and folders
+    - Context menu: Shift+right-click "Copy WSL path" on files and folders (HKCU, no admin)
     - cmdp (WSL): inverse function, copies Windows path from WSL to clipboard
-
-.NOTES
-    Context menu (modern Win11 style) requires admin rights.
-    Context menu (classic Shift+right-click) does not require admin rights.
 #>
 
 param(
@@ -37,19 +33,6 @@ function Prompt-YesNo([string]$question, [bool]$default = $true) {
     $answer = Read-Host "$question $hint"
     if ([string]::IsNullOrWhiteSpace($answer)) { return $default }
     return $answer -match "^[Yy]"
-}
-
-function Test-IsAdmin {
-    $identity  = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = [Security.Principal.WindowsPrincipal]$identity
-    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
-
-function Restart-AsAdmin([string]$scriptPath, [string]$installDir) {
-    Write-Warn "Restarting as administrator..."
-    $psArgs = "-ExecutionPolicy Bypass -NoProfile -File `"$scriptPath`""
-    if ($installDir) { $psArgs += " -InstallDir `"$installDir`"" }
-    Start-Process powershell.exe -ArgumentList $psArgs -Verb RunAs -Wait
 }
 
 # ---------------------------------------------------------------------------
@@ -77,17 +60,16 @@ function Set-RegistryEntry {
 
 function Set-ContextMenuEntries {
     param(
-        [Microsoft.Win32.RegistryKey]$hive,
-        [string]$classesRoot,  # e.g. "" for HKCR, "Software\Classes" for HKCU
         [string]$ubpPath,
         [string]$ps1Path
     )
 
+    $hive = [Microsoft.Win32.Registry]::CurrentUser
     $cmd = "`"$ubpPath`" `"powershell.exe`" `"-ExecutionPolicy`" `"Bypass`" `"-NoProfile`" `"-NonInteractive`" `"-File`" `"$ps1Path`" `"-RawPath`" `"%V`""
 
     $entries = @(
-        "$classesRoot\*\shell\CopyWSLPath",
-        "$classesRoot\Directory\shell\CopyWSLPath"
+        "Software\Classes\*\shell\CopyWSLPath",
+        "Software\Classes\Directory\shell\CopyWSLPath"
     )
 
     foreach ($entry in $entries) {
@@ -96,6 +78,8 @@ function Set-ContextMenuEntries {
         Set-RegistryEntry -hive $hive -subKeyPath "$entry\command" `
             -defaultValue $cmd
     }
+
+    $hive.Close()
 }
 
 # ---------------------------------------------------------------------------
@@ -133,43 +117,10 @@ $installMenu = if ($Silent) { $true } else {
 }
 
 if ($installMenu) {
-    Write-Host ""
-    Write-Host "  Choose context menu style:" -ForegroundColor White
-    Write-Host "    1. Classic  (Shift+right-click on Win11, always visible on Win10)" -ForegroundColor Gray
-    Write-Host "       No admin required" -ForegroundColor DarkGray
-    Write-Host "    2. Modern   (always visible in Win11 right-click menu)" -ForegroundColor Gray
-    Write-Host "       Requires admin rights" -ForegroundColor DarkGray
-    Write-Host ""
-
-    $menuStyle = if ($Silent) {
-        "classic"
-    } else {
-        $choice = Read-Host "  Your choice [1/2] (default: 1)"
-        if ($choice -eq "2") { "modern" } else { "classic" }
-    }
-
-    if ($menuStyle -eq "modern" -and -not (Test-IsAdmin)) {
-        Write-Warn "Modern menu requires admin rights."
-        $restart = Prompt-YesNo "Restart this script as administrator?"
-        if ($restart) {
-            Restart-AsAdmin $PSCommandPath $InstallDir
-            exit 0
-        }
-        Write-Warn "Falling back to classic menu."
-        $menuStyle = "classic"
-    }
-
-    Write-Step "Writing registry keys ($menuStyle)..."
+    Write-Step "Writing registry keys (HKCU, Shift+right-click)..."
     try {
-        if ($menuStyle -eq "modern") {
-            $hive = [Microsoft.Win32.Registry]::ClassesRoot
-            Set-ContextMenuEntries -hive $hive -classesRoot "" -ubpPath $ubpPath -ps1Path $ps1Path
-        } else {
-            $hive = [Microsoft.Win32.Registry]::CurrentUser
-            Set-ContextMenuEntries -hive $hive -classesRoot "Software\Classes" -ubpPath $ubpPath -ps1Path $ps1Path
-        }
-        $hive.Close()
-        Write-Ok "Context menu installed ($menuStyle)."
+        Set-ContextMenuEntries -ubpPath $ubpPath -ps1Path $ps1Path
+        Write-Ok "Context menu installed (Shift+right-click on Win11, always visible on Win10)."
     } catch {
         Write-Err "Failed to write registry: $_"
     }

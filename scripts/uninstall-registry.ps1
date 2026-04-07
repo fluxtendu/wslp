@@ -27,10 +27,11 @@ function Test-IsAdmin {
 # ---------------------------------------------------------------------------
 
 function Remove-ContextMenuEntries([Microsoft.Win32.RegistryKey]$hive, [string]$classesRoot) {
+    $prefix = if ($classesRoot) { "$classesRoot\" } else { "" }
     foreach ($subKey in @(
-        "$classesRoot\*\shell\CopyWSLPath",
-        "$classesRoot\Directory\shell\CopyWSLPath",
-        "$classesRoot\Directory\Background\shell\CopyWSLPath"
+        "${prefix}*\shell\CopyWSLPath",
+        "${prefix}Directory\shell\CopyWSLPath",
+        "${prefix}Directory\Background\shell\CopyWSLPath"
     )) {
         try {
             # DeleteSubKeyTree(name, throwOnMissingSubKey: false) — safe no-op if absent

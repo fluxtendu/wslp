@@ -60,6 +60,23 @@ EOF
         return 1
     fi
 
+    # Validate converted path
+    # Must start with a drive letter (X:\) or UNC prefix (\\)
+    if [[ ! "$win_path" =~ ^[A-Za-z]:\\ ]] && [[ ! "$win_path" == \\\\* ]]; then
+        if [[ "$quiet" == false ]]; then
+            echo "cmdp: invalid conversion result (unexpected format): $win_path" >&2
+        fi
+        return 1
+    fi
+
+    # No control characters (null bytes, etc.)
+    if [[ "$win_path" =~ [[:cntrl:]] ]]; then
+        if [[ "$quiet" == false ]]; then
+            echo "cmdp: invalid conversion result (control characters detected)" >&2
+        fi
+        return 1
+    fi
+
     # Copy to clipboard
     if command -v clip.exe > /dev/null 2>&1; then
         printf '%s' "$win_path" | clip.exe 2>/dev/null

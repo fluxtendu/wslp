@@ -65,7 +65,7 @@ function Set-ContextMenuEntries {
     )
 
     $hive = [Microsoft.Win32.Registry]::CurrentUser
-    $cmd = "`"$ubpPath`" `"powershell.exe`" `"-ExecutionPolicy`" `"Bypass`" `"-NoProfile`" `"-NonInteractive`" `"-File`" `"$ps1Path`" `"-RawPath`" `"%V`""
+    $cmd = "`"$ubpPath`" `"powershell.exe`" `"-ExecutionPolicy`" `"Bypass`" `"-NoProfile`" `"-NonInteractive`" `"-File`" `"$ps1Path`" `"-RawPath`" `"%V`" `"-Quiet`""
 
     $entries = @(
         "Software\Classes\*\shell\CopyWSLPath",

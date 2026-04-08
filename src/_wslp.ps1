@@ -1,5 +1,6 @@
 Param(
-    [string]$RawPath
+    [string]$RawPath,
+    [switch]$Quiet
 )
 
 if ($RawPath) {
@@ -65,17 +66,23 @@ function Convert-ToWslPath([string]$path) {
 
 $finalPath = Convert-ToWslPath $inputPath
 
-if ($finalPath) {
-    $finalPath = $finalPath.Trim()
+if (-not $finalPath) {
+    Write-Host "Cannot convert: $inputPath" -ForegroundColor Red
+    exit 1
+}
 
-    try {
-        Add-Type -AssemblyName System.Windows.Forms
-        [System.Windows.Forms.Clipboard]::SetText($finalPath)
-    } catch {
-        $finalPath | & "$env:SystemRoot\System32\clip.exe"
-    }
+$finalPath = $finalPath.Trim()
 
-    # Check if the path exists on the WSL side
+# Copy to clipboard
+try {
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.Clipboard]::SetText($finalPath)
+} catch {
+    $finalPath | & "$env:SystemRoot\System32\clip.exe"
+}
+
+# Status message (skip in quiet mode)
+if (-not $Quiet) {
     $savedEncoding2 = [Console]::OutputEncoding
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     try {
@@ -90,9 +97,6 @@ if ($finalPath) {
     } finally {
         [Console]::OutputEncoding = $savedEncoding2
     }
-
-    Write-Output $finalPath
-} else {
-    Write-Host "Cannot convert: $inputPath" -ForegroundColor Red
-    exit 1
 }
+
+Write-Output $finalPath

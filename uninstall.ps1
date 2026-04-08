@@ -1,11 +1,10 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
-    Removes wslp registry entries and optionally cmdp from WSL.
+    Removes wslp: registry entries, cmdp from WSL, and optionally the install folder.
 
-.NOTES
-    If the context menu was installed in modern mode (HKCR), admin rights are required to remove it.
-    This script is called automatically by Scoop on uninstall.
+.DESCRIPTION
+    Called automatically by Scoop on uninstall, or run manually.
 #>
 
 Set-StrictMode -Version Latest
@@ -21,11 +20,6 @@ function Test-IsAdmin {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# ---------------------------------------------------------------------------
-# Registry helpers — always use Win32 API directly to avoid any shell
-# interpretation of special characters (e.g. the literal "*" key name)
-# ---------------------------------------------------------------------------
-
 function Remove-ContextMenuEntries([Microsoft.Win32.RegistryKey]$hive, [string]$classesRoot) {
     $prefix = if ($classesRoot) { "$classesRoot\" } else { "" }
     foreach ($subKey in @(
@@ -34,7 +28,6 @@ function Remove-ContextMenuEntries([Microsoft.Win32.RegistryKey]$hive, [string]$
         "${prefix}Directory\Background\shell\CopyWSLPath"
     )) {
         try {
-            # DeleteSubKeyTree(name, throwOnMissingSubKey: false) — safe no-op if absent
             $hive.DeleteSubKeyTree($subKey, $false)
         } catch { }
     }
@@ -43,11 +36,11 @@ function Remove-ContextMenuEntries([Microsoft.Win32.RegistryKey]$hive, [string]$
 # ---------------------------------------------------------------------------
 
 Write-Host ""
-Write-Host "  wslp — uninstall" -ForegroundColor White
+Write-Host "  wslp -- uninstall" -ForegroundColor White
 Write-Host ""
 
 # ---------------------------------------------------------------------------
-# Registry: HKCU (no admin needed)
+# Registry: HKCU
 # ---------------------------------------------------------------------------
 
 Write-Step "Removing HKCU registry entries..."
@@ -57,13 +50,12 @@ Write-Ok "HKCU entries removed."
 $hkcu.Close()
 
 # ---------------------------------------------------------------------------
-# Registry: HKCR (admin needed)
+# Registry: HKCR (admin needed, legacy)
 # ---------------------------------------------------------------------------
 
 Write-Step "Checking HKCR registry entries..."
 $hkcr = [Microsoft.Win32.Registry]::ClassesRoot
 
-# Probe without deleting first to give a useful message if admin is missing
 $hkcrPresent = $false
 foreach ($subKey in @("*\shell\CopyWSLPath", "Directory\shell\CopyWSLPath", "Directory\Background\shell\CopyWSLPath")) {
     $probe = $hkcr.OpenSubKey($subKey, $false)
@@ -102,7 +94,7 @@ try {
     $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
     Write-Ok "WSL cleanup done."
 } catch {
-    Write-Warn "WSL not available — ~/.local/share/cmdp was not removed."
+    Write-Warn "WSL not available -- ~/.local/share/cmdp was not removed."
 }
 
 Write-Host ""

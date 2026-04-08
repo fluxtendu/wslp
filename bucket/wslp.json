@@ -9,8 +9,8 @@
     "bin": [
         ["src\\wslp.cmd", "wslp"]
     ],
-    "post_install": "& \"$dir\\scripts\\install-registry.ps1\" -InstallDir \"$dir\" -Silent",
-    "pre_uninstall": "& \"$dir\\scripts\\uninstall-registry.ps1\"",
+    "post_install": "& \"$dir\\install.ps1\" -InstallDir \"$dir\" -Silent",
+    "pre_uninstall": "& \"$dir\\uninstall.ps1\"",
     "checkver": {
         "github": "https://github.com/erratos/wslp"
     },

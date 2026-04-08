@@ -50,9 +50,9 @@ After install, an interactive script runs to set up optional features (context m
        "User"
    )
    ```
-4. Optionally run the extras installer:
+4. Optionally run the installer for extras (context menu, cmdp):
    ```powershell
-   .\scripts\install-registry.ps1 -InstallDir "C:\path\to\wslp"
+   .\install.ps1
    ```
 
 ---
@@ -61,11 +61,11 @@ After install, an interactive script runs to set up optional features (context m
 
 ### Context menu — "Copy WSL path"
 
-Run `scripts\install-registry.ps1` and follow the prompts.
+Run `install.ps1` and follow the prompts.
 
 The entry appears in the classic context menu (Shift+right-click on Win11, always visible on Win10). No admin rights required.
 
-To remove: `scripts\uninstall-registry.ps1`
+To remove: `.\uninstall.ps1`
 
 ### cmdp (WSL)
 

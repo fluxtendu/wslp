@@ -9,8 +9,8 @@
 $ErrorActionPreference = "Continue"
 
 $projectRoot = Split-Path $PSScriptRoot -Parent
-$installScript   = Join-Path $projectRoot "scripts\install-registry.ps1"
-$uninstallScript = Join-Path $projectRoot "scripts\uninstall-registry.ps1"
+$installScript   = Join-Path $projectRoot "install.ps1"
+$uninstallScript = Join-Path $projectRoot "uninstall.ps1"
 $installDir      = $projectRoot
 
 $passed = 0

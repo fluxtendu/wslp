@@ -20,12 +20,27 @@ cmdp() {
         return 1
     fi
 
+    local copied=true
     if command -v clip.exe > /dev/null 2>&1; then
-        printf '%s' "$win_path" | clip.exe
+        printf '%s' "$win_path" | clip.exe 2>/dev/null
     else
+        copied=false
         echo "cmdp: clip.exe not found — path not copied to clipboard." >&2
         echo "      Ensure /etc/wsl.conf does not set appendWindowsPath=false." >&2
     fi
 
-    printf '%s\n' "$win_path"
+    # Check if the original path exists (test the source, not the converted path)
+    local found
+    if [[ -e "$1" ]]; then
+        found="path found"
+    else
+        found="path not found"
+    fi
+
+    if [[ "$copied" == true ]]; then
+        echo "Copied to clipboard ($found)" >&2
+    else
+        echo "($found)" >&2
+    fi
+    echo "$win_path"
 }

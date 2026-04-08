@@ -75,6 +75,22 @@ if ($finalPath) {
         $finalPath | & "$env:SystemRoot\System32\clip.exe"
     }
 
+    # Check if the path exists on the WSL side
+    $savedEncoding2 = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    try {
+        & wsl.exe test -e "$finalPath" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Copied to clipboard (path found)" -ForegroundColor Green
+        } else {
+            Write-Host "Copied to clipboard (path not found)" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "Copied to clipboard" -ForegroundColor Green
+    } finally {
+        [Console]::OutputEncoding = $savedEncoding2
+    }
+
     Write-Host $finalPath -ForegroundColor Cyan
 } else {
     Write-Host "Cannot convert: $inputPath" -ForegroundColor Red

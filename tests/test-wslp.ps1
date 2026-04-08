@@ -183,11 +183,11 @@ foreach ($test in $tests) {
         $output = & powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive `
             -File $wslpScript -RawPath $testPath 2>&1
 
-        # Output may contain ANSI color codes from Write-Host — strip them
-        # and take only non-empty lines.
-        $result = ($output | Where-Object { $_ -is [string] -or $_ -is [System.Management.Automation.PSObject] } |
-            ForEach-Object { $_.ToString().Trim() } |
-            Where-Object { $_ -ne "" }) -join ""
+        # Output contains status messages + the path on the last line.
+        # Extract only the last non-empty line (the converted path).
+        $lines = $output | ForEach-Object { $_.ToString().Trim() } |
+            Where-Object { $_ -ne "" }
+        $result = if ($lines -is [array]) { $lines[-1] } else { $lines }
 
         if ($result -eq $expected) {
             Write-Host "  PASS  $testName" -ForegroundColor Green

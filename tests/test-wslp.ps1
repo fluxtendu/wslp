@@ -214,26 +214,135 @@ foreach ($test in $tests) {
     }
 }
 
-# --- No-argument test ---
+# --- Flags and edge cases ---
 Write-Host ""
-Write-Host "--- Edge cases ---" -ForegroundColor Cyan
+Write-Host "--- Flags and edge cases ---" -ForegroundColor Cyan
 
+# Helper for flag tests
+function Test-Flag([string]$testName, [string[]]$flagArgs, [string]$expectPattern, [string]$notExpectPattern = $null) {
+    try {
+        $output = & powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive `
+            -File $wslpScript @flagArgs 2>&1
+        $text = ($output | ForEach-Object { $_.ToString() }) -join " "
+        $ok = $text -match $expectPattern
+        if ($ok -and $notExpectPattern) { $ok = $text -notmatch $notExpectPattern }
+        if ($ok) {
+            Write-Host "  PASS  $testName" -ForegroundColor Green
+            $script:results += "PASS  $testName"
+            $script:passed++
+        } else {
+            Write-Host "  FAIL  $testName" -ForegroundColor Red
+            Write-Host "        Output: [$text]" -ForegroundColor Gray
+            $script:results += "FAIL  $testName"
+            $script:failed++
+        }
+    } catch {
+        Write-Host "  FAIL  $testName (exception: $_)" -ForegroundColor Red
+        $script:results += "FAIL  $testName (exception)"
+        $script:failed++
+    }
+}
+
+# No argument → usage/help
+Test-Flag "No argument shows usage" @() "Usage"
+
+# --help flag
+Test-Flag "--help shows full help" @('-RawPath', '--help') "Options"
+
+# -h flag
+Test-Flag "-h shows full help" @('-RawPath', '-h') "Options"
+
+# /? flag
+Test-Flag "/? shows full help" @('-RawPath', '/?') "Options"
+
+# --version flag
+Test-Flag "--version shows version" @('-RawPath', '--version') "wslp \d+\.\d+"
+
+# -V flag
+Test-Flag "-V shows version" @('-RawPath', '-V') "wslp \d+\.\d+"
+
+# -Quiet mode produces no output
 try {
     $output = & powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive `
-        -File $wslpScript 2>&1
-    $text = ($output | ForEach-Object { $_.ToString() }) -join " "
-    if ($text -match "Usage") {
-        Write-Host "  PASS  No argument shows usage" -ForegroundColor Green
-        $results += "PASS  No argument shows usage"
+        -File $wslpScript -RawPath "C:\Users" -Quiet 2>&1
+    $text = ($output | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -ne "" }) -join ""
+    if ([string]::IsNullOrEmpty($text)) {
+        Write-Host "  PASS  -Quiet produces no output" -ForegroundColor Green
+        $results += "PASS  -Quiet produces no output"
         $passed++
     } else {
-        Write-Host "  FAIL  No argument: unexpected output" -ForegroundColor Red
-        $results += "FAIL  No argument"
+        Write-Host "  FAIL  -Quiet produces no output" -ForegroundColor Red
+        Write-Host "        Got: [$text]" -ForegroundColor Gray
+        $results += "FAIL  -Quiet produces no output"
         $failed++
     }
 } catch {
-    Write-Host "  FAIL  No argument (exception: $_)" -ForegroundColor Red
-    $results += "FAIL  No argument (exception)"
+    Write-Host "  FAIL  -Quiet produces no output (exception: $_)" -ForegroundColor Red
+    $results += "FAIL  -Quiet (exception)"
+    $failed++
+}
+
+# Normal mode shows status message before path
+try {
+    $output = & powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive `
+        -File $wslpScript -RawPath "C:\Users" 2>&1
+    $lines = $output | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -ne "" }
+    $allText = $lines -join "`n"
+    if ($allText -match "WSL path copied to clipboard" -and $allText -match "/mnt/c/Users") {
+        Write-Host "  PASS  Normal mode shows status + path" -ForegroundColor Green
+        $results += "PASS  Normal mode shows status + path"
+        $passed++
+    } else {
+        Write-Host "  FAIL  Normal mode shows status + path" -ForegroundColor Red
+        Write-Host "        Got: [$allText]" -ForegroundColor Gray
+        $results += "FAIL  Normal mode shows status + path"
+        $failed++
+    }
+} catch {
+    Write-Host "  FAIL  Normal mode (exception: $_)" -ForegroundColor Red
+    $results += "FAIL  Normal mode (exception)"
+    $failed++
+}
+
+# Path existence indicator — existing path
+try {
+    $output = & powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive `
+        -File $wslpScript -RawPath "C:\Windows" 2>&1
+    $text = ($output | ForEach-Object { $_.ToString() }) -join " "
+    if ($text -match "path found") {
+        Write-Host "  PASS  Existing path shows (path found)" -ForegroundColor Green
+        $results += "PASS  Existing path shows (path found)"
+        $passed++
+    } else {
+        Write-Host "  FAIL  Existing path shows (path found)" -ForegroundColor Red
+        Write-Host "        Got: [$text]" -ForegroundColor Gray
+        $results += "FAIL  Existing path shows (path found)"
+        $failed++
+    }
+} catch {
+    Write-Host "  FAIL  path found (exception: $_)" -ForegroundColor Red
+    $results += "FAIL  path found (exception)"
+    $failed++
+}
+
+# Path existence indicator — non-existing path
+try {
+    $output = & powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive `
+        -File $wslpScript -RawPath "C:\this\path\does\not\exist" 2>&1
+    $text = ($output | ForEach-Object { $_.ToString() }) -join " "
+    if ($text -match "path not found") {
+        Write-Host "  PASS  Non-existing path shows (path not found)" -ForegroundColor Green
+        $results += "PASS  Non-existing path shows (path not found)"
+        $passed++
+    } else {
+        Write-Host "  FAIL  Non-existing path shows (path not found)" -ForegroundColor Red
+        Write-Host "        Got: [$text]" -ForegroundColor Gray
+        $results += "FAIL  Non-existing path shows (path not found)"
+        $failed++
+    }
+} catch {
+    Write-Host "  FAIL  path not found (exception: $_)" -ForegroundColor Red
+    $results += "FAIL  path not found (exception)"
     $failed++
 }
 

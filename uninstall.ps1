@@ -90,6 +90,7 @@ fi
 '@
 
 try {
+    $cleanupScript = $cleanupScript -replace "`r`n", "`n"
     $output = $cleanupScript | & wsl.exe bash 2>&1
     $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
     Write-Ok "WSL cleanup done."

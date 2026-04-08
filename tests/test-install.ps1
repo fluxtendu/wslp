@@ -151,6 +151,7 @@ chmod +x "$DEST/cmdp.sh"
 try {
     $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
     $env:WSLENV = 'WSLP_CMDP_SRC'
+    $installCmdpScript = $installCmdpScript -replace "`r`n", "`n"
     $output = ($installCmdpScript | & wsl.exe bash 2>&1) -join ""
     if ($output -match "OK") {
         Test-Pass "cmdp: installed to ~/.local/share/cmdp/"
@@ -172,6 +173,7 @@ rm -rf "$DEST"
 '@
 
 try {
+    $cleanupScript = $cleanupScript -replace "`r`n", "`n"
     $output = ($cleanupScript | & wsl.exe bash 2>&1) -join ""
     if ($output -match "REMOVED") {
         Test-Pass "cmdp: uninstalled (directory removed)"

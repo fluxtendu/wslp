@@ -243,6 +243,7 @@ echo "$DEST/cmdp.sh"
         $rest  = $cmdpSrc.Substring(2).Replace('\', '/')
         $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
         $env:WSLENV = 'WSLP_CMDP_SRC'
+        $installScript = $installScript -replace "`r`n", "`n"
         $output = $installScript | & wsl.exe bash 2>&1
         $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
         Write-Ok "cmdp copied to ~/.local/share/cmdp/cmdp.sh"

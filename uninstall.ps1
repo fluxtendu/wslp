@@ -90,8 +90,14 @@ fi
 '@
 
 try {
-    $cleanupScript = $cleanupScript -replace "`r`n", "`n"
-    $output = $cleanupScript | & wsl.exe bash 2>&1
+    $tmpSh = Join-Path $env:TEMP "wslp-uninstall.sh"
+    $cleanupScript -replace "`r`n", "`n" |
+        Set-Content -Path $tmpSh -Encoding UTF8 -NoNewline
+    $tmpDrive = $tmpSh.Substring(0, 1).ToLower()
+    $tmpRest  = $tmpSh.Substring(2).Replace('\', '/')
+    $tmpShWsl = "/mnt/$tmpDrive$tmpRest"
+    $output = & wsl.exe bash $tmpShWsl 2>&1
+    Remove-Item $tmpSh -Force -ErrorAction SilentlyContinue
     $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
     Write-Ok "WSL cleanup done."
 } catch {

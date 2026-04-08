@@ -151,8 +151,14 @@ chmod +x "$DEST/cmdp.sh"
 try {
     $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
     $env:WSLENV = 'WSLP_CMDP_SRC'
-    $installCmdpScript = $installCmdpScript -replace "`r`n", "`n"
-    $output = ($installCmdpScript | & wsl.exe bash 2>&1) -join ""
+    $tmpSh = Join-Path $env:TEMP "wslp-test-install.sh"
+    $installCmdpScript -replace "`r`n", "`n" |
+        Set-Content -Path $tmpSh -Encoding UTF8 -NoNewline
+    $tmpDrive = $tmpSh.Substring(0, 1).ToLower()
+    $tmpRest  = $tmpSh.Substring(2).Replace('\', '/')
+    $tmpShWsl = "/mnt/$tmpDrive$tmpRest"
+    $output = (& wsl.exe bash $tmpShWsl 2>&1) -join ""
+    Remove-Item $tmpSh -Force -ErrorAction SilentlyContinue
     if ($output -match "OK") {
         Test-Pass "cmdp: installed to ~/.local/share/cmdp/"
     } else {
@@ -173,8 +179,14 @@ rm -rf "$DEST"
 '@
 
 try {
-    $cleanupScript = $cleanupScript -replace "`r`n", "`n"
-    $output = ($cleanupScript | & wsl.exe bash 2>&1) -join ""
+    $tmpSh = Join-Path $env:TEMP "wslp-test-cleanup.sh"
+    $cleanupScript -replace "`r`n", "`n" |
+        Set-Content -Path $tmpSh -Encoding UTF8 -NoNewline
+    $tmpDrive = $tmpSh.Substring(0, 1).ToLower()
+    $tmpRest  = $tmpSh.Substring(2).Replace('\', '/')
+    $tmpShWsl = "/mnt/$tmpDrive$tmpRest"
+    $output = (& wsl.exe bash $tmpShWsl 2>&1) -join ""
+    Remove-Item $tmpSh -Force -ErrorAction SilentlyContinue
     if ($output -match "REMOVED") {
         Test-Pass "cmdp: uninstalled (directory removed)"
     } else {

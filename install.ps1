@@ -54,7 +54,8 @@ function Prompt-YesNo([string]$question, [bool]$default = $true) {
 # Detect mode: remote (piped via irm | iex) or local
 # ---------------------------------------------------------------------------
 
-$isRemote = -not (Test-Path (Join-Path $PSScriptRoot "src\wslp.cmd") -ErrorAction SilentlyContinue)
+$isRemote = [string]::IsNullOrEmpty($PSScriptRoot) -or
+    -not (Test-Path (Join-Path $PSScriptRoot "src\wslp.cmd") -ErrorAction SilentlyContinue)
 
 Write-Host ""
 Write-Host "  wslp installer" -ForegroundColor White
@@ -243,8 +244,14 @@ echo "$DEST/cmdp.sh"
         $rest  = $cmdpSrc.Substring(2).Replace('\', '/')
         $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
         $env:WSLENV = 'WSLP_CMDP_SRC'
-        $installScript = $installScript -replace "`r`n", "`n"
-        $output = $installScript | & wsl.exe bash 2>&1
+        $tmpSh = Join-Path $env:TEMP "wslp-cmdp-install.sh"
+        $installScript -replace "`r`n", "`n" |
+            Set-Content -Path $tmpSh -Encoding UTF8 -NoNewline
+        $tmpDrive = $tmpSh.Substring(0, 1).ToLower()
+        $tmpRest  = $tmpSh.Substring(2).Replace('\', '/')
+        $tmpShWsl = "/mnt/$tmpDrive$tmpRest"
+        $output = & wsl.exe bash $tmpShWsl 2>&1
+        Remove-Item $tmpSh -Force -ErrorAction SilentlyContinue
         $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
         Write-Ok "cmdp copied to ~/.local/share/cmdp/cmdp.sh"
         Write-Host ""

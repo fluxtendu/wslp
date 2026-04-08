@@ -75,7 +75,7 @@ The installer copies `cmdp.sh` to `~/.local/share/cmdp/` and tells you the line 
 
 ```bash
 mkdir -p ~/.local/share/cmdp
-cp /path/to/wslp/scripts/cmdp.sh ~/.local/share/cmdp/
+cp /path/to/wslp/src/cmdp.sh ~/.local/share/cmdp/
 ```
 
 Then add this line to your shell config (`~/.zshrc` or `~/.bashrc`), **before** any prompt initializer (starship, oh-my-zsh…):
@@ -140,7 +140,7 @@ This removes the command, PATH entry, registry keys, and WSL cmdp automatically.
 
 1. Delete the install folder.
 2. Remove the PATH entry.
-3. Run `scripts\uninstall-registry.ps1` to clean up registry and WSL.
+3. Run `uninstall.ps1` to clean up registry and WSL.
 
 ---
 

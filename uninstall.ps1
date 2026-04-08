@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Removes wslp: registry entries, cmdp from WSL, and optionally the install folder.
+    Removes wslp: registry entries, cmdp from WSL, PATH entry, and shows cleanup instructions.
 
 .DESCRIPTION
     Called automatically by Scoop on uninstall, or run manually.
@@ -22,15 +22,22 @@ function Test-IsAdmin {
 
 function Remove-ContextMenuEntries([Microsoft.Win32.RegistryKey]$hive, [string]$classesRoot) {
     $prefix = if ($classesRoot) { "$classesRoot\" } else { "" }
+    $removed = $false
     foreach ($subKey in @(
         "${prefix}*\shell\CopyWSLPath",
         "${prefix}Directory\shell\CopyWSLPath",
         "${prefix}Directory\Background\shell\CopyWSLPath"
     )) {
         try {
-            $hive.DeleteSubKeyTree($subKey, $false)
+            $probe = $hive.OpenSubKey($subKey, $false)
+            if ($null -ne $probe) {
+                $probe.Close()
+                $hive.DeleteSubKeyTree($subKey, $false)
+                $removed = $true
+            }
         } catch { }
     }
+    return $removed
 }
 
 # ---------------------------------------------------------------------------
@@ -45,8 +52,12 @@ Write-Host ""
 
 Write-Step "Removing HKCU registry entries..."
 $hkcu = [Microsoft.Win32.Registry]::CurrentUser
-Remove-ContextMenuEntries -hive $hkcu -classesRoot "Software\Classes"
-Write-Ok "HKCU entries removed."
+$hkcuRemoved = Remove-ContextMenuEntries -hive $hkcu -classesRoot "Software\Classes"
+if ($hkcuRemoved) {
+    Write-Ok "Context menu entries removed (HKCU)."
+} else {
+    Write-Ok "No HKCU entries found."
+}
 $hkcu.Close()
 
 # ---------------------------------------------------------------------------
@@ -65,11 +76,13 @@ foreach ($subKey in @("*\shell\CopyWSLPath", "Directory\shell\CopyWSLPath", "Dir
 if ($hkcrPresent) {
     if (Test-IsAdmin) {
         Remove-ContextMenuEntries -hive $hkcr -classesRoot ""
-        Write-Ok "HKCR entries removed."
+        Write-Ok "Context menu entries removed (HKCR)."
     } else {
         Write-Warn "HKCR entries found but admin rights are required to remove them."
         Write-Warn "Re-run this script as administrator to remove them."
     }
+} else {
+    Write-Ok "No HKCR entries found."
 }
 $hkcr.Close()
 
@@ -82,10 +95,9 @@ $cleanupScript = @'
 DEST="$HOME/.local/share/cmdp"
 if [ -d "$DEST" ]; then
     rm -rf "$DEST"
-    echo "Removed $DEST"
-    echo "Note: if you sourced cmdp.sh in your shell config, remove that line manually."
+    echo "REMOVED"
 else
-    echo "Nothing to remove."
+    echo "NONE"
 fi
 '@
 
@@ -98,12 +110,41 @@ try {
     $tmpShWsl = "/mnt/$tmpDrive$tmpRest"
     $output = & wsl.exe bash $tmpShWsl 2>&1
     Remove-Item $tmpSh -Force -ErrorAction SilentlyContinue
-    $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
-    Write-Ok "WSL cleanup done."
+    if ($output -match "REMOVED") {
+        Write-Ok "cmdp removed (~/.local/share/cmdp/)."
+        Write-Warn "If you sourced cmdp.sh in your shell config (.bashrc, .zshrc), remove that line manually."
+    } else {
+        Write-Ok "cmdp was not installed in WSL."
+    }
 } catch {
-    Write-Warn "WSL not available -- ~/.local/share/cmdp was not removed."
+    Write-Warn "WSL not available -- could not check for cmdp."
 }
 
+# ---------------------------------------------------------------------------
+# PATH cleanup
+# ---------------------------------------------------------------------------
+
+Write-Step "Checking user PATH..."
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { $PWD.Path }
+$userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+if ($userPath) {
+    $entries = $userPath -split ';' | Where-Object { $_.TrimEnd('\') -ne $scriptDir.TrimEnd('\') }
+    $newPath = ($entries -join ';').TrimEnd(';')
+    if ($newPath -ne $userPath) {
+        [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
+        Write-Ok "Removed $scriptDir from user PATH."
+    } else {
+        Write-Ok "Install directory was not in user PATH."
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
+
 Write-Host ""
-Write-Host "  Done." -ForegroundColor White
+Write-Host "  Uninstall complete." -ForegroundColor White
+Write-Host ""
+Write-Host "  To finish cleanup, you can delete the install directory:" -ForegroundColor Yellow
+Write-Host "    $scriptDir" -ForegroundColor Yellow
 Write-Host ""

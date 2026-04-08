@@ -13,7 +13,7 @@ FAILED=0
 
 # Source cmdp if not already loaded
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-CMDP_SH="$SCRIPT_DIR/scripts/cmdp.sh"
+CMDP_SH="$SCRIPT_DIR/src/cmdp.sh"
 if ! command -v cmdp > /dev/null 2>&1; then
     if [[ -f "$CMDP_SH" ]]; then
         source "$CMDP_SH"

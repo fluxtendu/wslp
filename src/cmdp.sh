@@ -62,7 +62,8 @@ EOF
 
     # Validate converted path
     # Must start with a drive letter (X:\) or UNC prefix (\\)
-    if [[ ! "$win_path" =~ ^[A-Za-z]:\\ ]] && [[ ! "$win_path" == \\\\* ]]; then
+    local _drive_re='^[A-Za-z]:\\'
+    if [[ ! "$win_path" =~ $_drive_re ]] && [[ ! "$win_path" == \\\\* ]]; then
         if [[ "$quiet" == false ]]; then
             echo "cmdp: invalid conversion result (unexpected format): $win_path" >&2
         fi

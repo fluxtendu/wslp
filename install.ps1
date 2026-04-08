@@ -10,7 +10,7 @@
       irm https://raw.githubusercontent.com/erratos/wslp/main/install.ps1 | iex
 
       Downloads the latest release, extracts to %LOCALAPPDATA%\Programs\wslp,
-      adds src\ to the user PATH, and offers optional features.
+      adds the install directory to the user PATH, and offers optional features.
 
     Local (from project directory or Scoop post-install):
       .\install.ps1 [-InstallDir <path>] [-Silent]
@@ -62,14 +62,35 @@ Write-Host "  wslp installer" -ForegroundColor White
 Write-Host ""
 
 # ---------------------------------------------------------------------------
+# Install directory
+# ---------------------------------------------------------------------------
+
+$defaultDir = if ($isRemote) {
+    Join-Path $env:LOCALAPPDATA "Programs\wslp"
+} else {
+    $PSScriptRoot
+}
+
+if (-not $InstallDir) {
+    if ($Silent) {
+        $InstallDir = $defaultDir
+    } else {
+        $answer = Read-Host "  Install directory [$defaultDir]"
+        if ([string]::IsNullOrWhiteSpace($answer)) {
+            $InstallDir = $defaultDir
+        } else {
+            $InstallDir = $answer.Trim()
+        }
+    }
+}
+
+Write-Host "  -> $InstallDir" -ForegroundColor DarkGray
+
+# ---------------------------------------------------------------------------
 # Remote mode: download and extract
 # ---------------------------------------------------------------------------
 
 if ($isRemote) {
-    if (-not $InstallDir) {
-        $InstallDir = Join-Path $env:LOCALAPPDATA "Programs\wslp"
-    }
-
     Write-Step "Fetching latest release from GitHub..."
     try {
         $releaseUrl = "https://api.github.com/repos/$repo/releases/latest"
@@ -111,40 +132,51 @@ if ($isRemote) {
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     }
 
-    Copy-Item -Path "$($extracted.FullName)\*" -Destination $InstallDir -Recurse -Force
+    # Copy only the needed files (flat layout: src/* → root, + scripts)
+    $extractedSrc = Join-Path $extracted.FullName "src"
+    if (Test-Path $extractedSrc) {
+        Copy-Item -Path "$extractedSrc\*" -Destination $InstallDir -Force
+    }
+    foreach ($file in @("install.ps1", "uninstall.ps1", "install.cmd", "uninstall.cmd")) {
+        $filePath = Join-Path $extracted.FullName $file
+        if (Test-Path $filePath) {
+            Copy-Item -Path $filePath -Destination $InstallDir -Force
+        }
+    }
     Write-Ok "Files installed to $InstallDir"
 
     # Cleanup temp files
     Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue
     Remove-Item $tmpExtract -Recurse -Force -ErrorAction SilentlyContinue
 
-    # Add src\ to user PATH
-    $srcDir = Join-Path $InstallDir "src"
+    # Add install dir to user PATH
     $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
     $pathEntries = $userPath -split ';' | ForEach-Object { $_.TrimEnd('\') }
 
-    if ($pathEntries -notcontains $srcDir.TrimEnd('\')) {
-        Write-Step "Adding $srcDir to user PATH..."
-        [Environment]::SetEnvironmentVariable("PATH", "$userPath;$srcDir", "User")
-        $env:PATH = "$env:PATH;$srcDir"
+    if ($pathEntries -notcontains $InstallDir.TrimEnd('\')) {
+        Write-Step "Adding $InstallDir to user PATH..."
+        [Environment]::SetEnvironmentVariable("PATH", "$userPath;$InstallDir", "User")
+        $env:PATH = "$env:PATH;$InstallDir"
         Write-Ok "Added to PATH. New terminals will have wslp available."
     } else {
         Write-Ok "Already in PATH."
     }
-} else {
-    # Local mode
-    if (-not $InstallDir) {
-        $InstallDir = $PSScriptRoot
-    }
-    Write-Host "  Install directory: $InstallDir" -ForegroundColor DarkGray
 }
 
 # ---------------------------------------------------------------------------
 # Resolve required files
 # ---------------------------------------------------------------------------
 
-$ubpPath = Join-Path $InstallDir "src\ubp.exe"
-$ps1Path = Join-Path $InstallDir "src\_wslp.ps1"
+# Remote install = flat layout (files at root), local = project layout (src\)
+if ($isRemote) {
+    $ubpPath = Join-Path $InstallDir "ubp.exe"
+    $ps1Path = Join-Path $InstallDir "_wslp.ps1"
+    $cmdpSrc = Join-Path $InstallDir "cmdp.sh"
+} else {
+    $ubpPath = Join-Path $InstallDir "src\ubp.exe"
+    $ps1Path = Join-Path $InstallDir "src\_wslp.ps1"
+    $cmdpSrc = Join-Path $InstallDir "src\cmdp.sh"
+}
 
 if (-not (Test-Path -LiteralPath $ubpPath)) {
     Write-Err "Cannot find ubp.exe at: $ubpPath"
@@ -227,8 +259,6 @@ $installCmdp = if ($Silent) { $false } else {
 }
 
 if ($installCmdp) {
-    $cmdpSrc = Join-Path $InstallDir "scripts\cmdp.sh"
-
     $installScript = @'
 set -e
 DEST="$HOME/.local/share/cmdp"

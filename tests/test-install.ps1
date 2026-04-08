@@ -135,7 +135,7 @@ $hkcu.Close()
 Write-Host ""
 Write-Host "--- cmdp WSL install ---" -ForegroundColor Cyan
 
-$cmdpSrc = Join-Path $installDir "scripts\cmdp.sh"
+$cmdpSrc = Join-Path $installDir "src\cmdp.sh"
 $drive = $cmdpSrc.Substring(0, 1).ToLower()
 $rest  = $cmdpSrc.Substring(2).Replace('\', '/')
 

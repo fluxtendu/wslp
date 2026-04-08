@@ -100,6 +100,33 @@ if (-not $finalPath) {
 
 $finalPath = $finalPath.Trim()
 
+# Validate converted path
+$pathValid = $true
+$pathError = $null
+
+# Must start with /
+if (-not $finalPath.StartsWith('/')) {
+    $pathValid = $false
+    $pathError = "converted path does not start with /"
+}
+
+# No control characters (0x00-0x1F)
+if ($pathValid -and $finalPath -match '[\x00-\x1F]') {
+    $pathValid = $false
+    $pathError = "converted path contains control characters"
+}
+
+# No double slashes (corruption indicator)
+if ($pathValid -and $finalPath -match '(?<!^)//') {
+    $pathValid = $false
+    $pathError = "converted path contains double slashes"
+}
+
+if (-not $pathValid) {
+    if (-not $Quiet) { Write-Host "Invalid conversion result: $pathError" -ForegroundColor Red }
+    exit 1
+}
+
 # Copy to clipboard
 try {
     Add-Type -AssemblyName System.Windows.Forms

@@ -67,7 +67,7 @@ function Convert-ToWslPath([string]$path) {
 $finalPath = Convert-ToWslPath $inputPath
 
 if (-not $finalPath) {
-    Write-Host "Cannot convert: $inputPath" -ForegroundColor Red
+    if (-not $Quiet) { Write-Host "Cannot convert: $inputPath" -ForegroundColor Red }
     exit 1
 }
 
@@ -81,22 +81,23 @@ try {
     $finalPath | & "$env:SystemRoot\System32\clip.exe"
 }
 
-# Status message (skip in quiet mode)
-if (-not $Quiet) {
-    $savedEncoding2 = [Console]::OutputEncoding
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    try {
-        & wsl.exe test -e "$finalPath" 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "WSL path copied to clipboard (path found)"
-        } else {
-            Write-Host "WSL path copied to clipboard (path not found)"
-        }
-    } catch {
-        Write-Host "WSL path copied to clipboard"
-    } finally {
-        [Console]::OutputEncoding = $savedEncoding2
+# Quiet mode: clipboard only, no output at all
+if ($Quiet) { exit 0 }
+
+# Status message + path on stdout
+$savedEncoding2 = [Console]::OutputEncoding
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+try {
+    & wsl.exe test -e "$finalPath" 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "WSL path copied to clipboard (path found)"
+    } else {
+        Write-Host "WSL path copied to clipboard (path not found)"
     }
+} catch {
+    Write-Host "WSL path copied to clipboard"
+} finally {
+    [Console]::OutputEncoding = $savedEncoding2
 }
 
 Write-Output $finalPath

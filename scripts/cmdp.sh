@@ -26,7 +26,9 @@ cmdp() {
     win_path=$(wslpath -w "$1" 2>/dev/null)
 
     if [[ -z "$win_path" ]]; then
-        echo "cmdp: cannot convert: $1" >&2
+        if [[ "$quiet" == false ]]; then
+            echo "cmdp: cannot convert: $1" >&2
+        fi
         return 1
     fi
 
@@ -42,20 +44,23 @@ cmdp() {
         fi
     fi
 
-    # Status message (skip in quiet mode)
-    if [[ "$quiet" == false ]]; then
-        local found
-        if [[ -e "$1" ]]; then
-            found="path found"
-        else
-            found="path not found"
-        fi
+    # Quiet mode: clipboard only, no output at all
+    if [[ "$quiet" == true ]]; then
+        return 0
+    fi
 
-        if [[ "$copied" == true ]]; then
-            echo "Windows path copied to clipboard ($found)" >&2
-        else
-            echo "($found)" >&2
-        fi
+    # Status message
+    local found
+    if [[ -e "$1" ]]; then
+        found="path found"
+    else
+        found="path not found"
+    fi
+
+    if [[ "$copied" == true ]]; then
+        echo "Windows path copied to clipboard ($found)" >&2
+    else
+        echo "($found)" >&2
     fi
 
     printf '%s\n' "$win_path"

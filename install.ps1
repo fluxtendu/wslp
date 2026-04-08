@@ -275,8 +275,8 @@ echo "$DEST/cmdp.sh"
         $env:WSLP_CMDP_SRC = "/mnt/$drive$rest"
         $env:WSLENV = 'WSLP_CMDP_SRC'
         $tmpSh = Join-Path $env:TEMP "wslp-cmdp-install.sh"
-        $installScript -replace "`r`n", "`n" |
-            Set-Content -Path $tmpSh -Encoding UTF8 -NoNewline
+        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+        [System.IO.File]::WriteAllText($tmpSh, ($installScript -replace "`r`n", "`n"), $utf8NoBom)
         $tmpDrive = $tmpSh.Substring(0, 1).ToLower()
         $tmpRest  = $tmpSh.Substring(2).Replace('\', '/')
         $tmpShWsl = "/mnt/$tmpDrive$tmpRest"
@@ -284,9 +284,13 @@ echo "$DEST/cmdp.sh"
         Remove-Item $tmpSh -Force -ErrorAction SilentlyContinue
         $output | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
         Write-Ok "cmdp copied to ~/.local/share/cmdp/cmdp.sh"
+        # Remove cmdp.sh from Windows install dir (only needed as source for WSL copy)
+        if ($isRemote -and (Test-Path $cmdpSrc)) {
+            Remove-Item $cmdpSrc -Force -ErrorAction SilentlyContinue
+        }
         Write-Host ""
         Write-Host "  To activate cmdp, add this line to your shell config" -ForegroundColor White
-        Write-Host "  BEFORE any prompt initializer [starship, oh-my-zsh...]:" -ForegroundColor White
+        Write-Host "  before any prompt initializer [starship, oh-my-zsh...]:" -ForegroundColor White
         Write-Host ""
         Write-Host '    source "$HOME/.local/share/cmdp/cmdp.sh"  # cmdp: convert WSL path -> Windows path + clipboard' -ForegroundColor Cyan
         Write-Host ""

@@ -7,12 +7,23 @@
     Called automatically by Scoop on uninstall, or run manually.
 #>
 
+param(
+    [switch]$Force
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "SilentlyContinue"
 
 function Write-Step([string]$msg) { Write-Host "  $msg" -ForegroundColor Cyan }
 function Write-Ok([string]$msg)   { Write-Host "  [OK] $msg" -ForegroundColor Green }
 function Write-Warn([string]$msg) { Write-Host "  [!]  $msg" -ForegroundColor Yellow }
+
+function Prompt-YesNo([string]$question, [bool]$default = $true) {
+    $hint   = if ($default) { "[Y/n]" } else { "[y/N]" }
+    $answer = Read-Host "$question $hint"
+    if ([string]::IsNullOrWhiteSpace($answer)) { return $default }
+    return $answer -match "^[Yy]"
+}
 
 function Test-IsAdmin {
     $identity  = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -45,6 +56,15 @@ function Remove-ContextMenuEntries([Microsoft.Win32.RegistryKey]$hive, [string]$
 Write-Host ""
 Write-Host "  wslp -- uninstall" -ForegroundColor White
 Write-Host ""
+
+if (-not $Force) {
+    if (-not (Prompt-YesNo "  Are you sure you want to uninstall wslp?")) {
+        Write-Host "  Cancelled." -ForegroundColor Yellow
+        Write-Host ""
+        return
+    }
+    Write-Host ""
+}
 
 # ---------------------------------------------------------------------------
 # Registry: HKCU
@@ -103,8 +123,8 @@ fi
 
 try {
     $tmpSh = Join-Path $env:TEMP "wslp-uninstall.sh"
-    $cleanupScript -replace "`r`n", "`n" |
-        Set-Content -Path $tmpSh -Encoding UTF8 -NoNewline
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($tmpSh, ($cleanupScript -replace "`r`n", "`n"), $utf8NoBom)
     $tmpDrive = $tmpSh.Substring(0, 1).ToLower()
     $tmpRest  = $tmpSh.Substring(2).Replace('\', '/')
     $tmpShWsl = "/mnt/$tmpDrive$tmpRest"

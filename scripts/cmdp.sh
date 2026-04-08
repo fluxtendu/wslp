@@ -38,7 +38,7 @@ cmdp() {
     fi
 
     if [[ "$copied" == true ]]; then
-        echo "Copied to clipboard ($found)" >&2
+        echo "Windows path copied to clipboard ($found)" >&2
     else
         echo "($found)" >&2
     fi

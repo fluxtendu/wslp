@@ -81,17 +81,17 @@ if ($finalPath) {
     try {
         & wsl.exe test -e "$finalPath" 2>$null
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "Copied to clipboard (path found)" -ForegroundColor Green
+            Write-Host "WSL path copied to clipboard (path found)"
         } else {
-            Write-Host "Copied to clipboard (path not found)" -ForegroundColor Green
+            Write-Host "WSL path copied to clipboard (path not found)"
         }
     } catch {
-        Write-Host "Copied to clipboard" -ForegroundColor Green
+        Write-Host "WSL path copied to clipboard"
     } finally {
         [Console]::OutputEncoding = $savedEncoding2
     }
 
-    Write-Host $finalPath -ForegroundColor Cyan
+    Write-Host $finalPath
 } else {
     Write-Host "Cannot convert: $inputPath" -ForegroundColor Red
     exit 1

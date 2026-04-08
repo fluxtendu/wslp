@@ -3,18 +3,45 @@ Param(
     [switch]$Quiet
 )
 
+$Version = "1.1.0"
+
+# Handle help/version flags passed as RawPath (from wslp.cmd)
+if ($RawPath -in '-h','--help','/?') { $RawPath = '' }
+if ($RawPath -in '-V','--version') {
+    Write-Output "wslp $Version"
+    exit 0
+}
+
 if ($RawPath) {
     # %~1 in CMD strips surrounding quotes, but "C:\foo\" leaves a spurious
     # trailing " because the backslash escapes the closing quote at parse time.
     $inputPath = $RawPath.Trim().TrimEnd('"')
 } else {
-    Write-Host "Usage: wslp <path>" -ForegroundColor Yellow
-    Write-Host "Converts a Windows path to its WSL equivalent and copies it to the clipboard."
+    Write-Host @"
+wslp $Version -- Convert Windows paths to WSL paths
+
+Usage:
+  wslp <path>
+  wslp [options]
+
+Options:
+  -q, --quiet      Suppress all output (clipboard only)
+  -h, --help       Show this help
+  -V, --version    Show version
+
+Examples:
+  wslp C:\Users\janot              /mnt/c/Users/janot
+  wslp "D:\Bibliotheque calibre"   /mnt/d/Bibliotheque calibre
+  wslp \\wsl.localhost\Ubuntu\home  /home
+  wslp . | xargs ls                Pipe to other commands
+
+The converted path is copied to the clipboard and printed to stdout.
+"@
     exit 0
 }
 
 if (-not $inputPath) {
-    Write-Host "Usage: wslp <path>" -ForegroundColor Yellow
+    Write-Host "Usage: wslp <path>"
     exit 0
 }
 

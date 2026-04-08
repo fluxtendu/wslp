@@ -5,6 +5,8 @@
 # Add this line to your shell config (before any prompt init like starship):
 #   source "$HOME/.local/share/cmdp/cmdp.sh"
 
+CMDP_VERSION="1.1.0"
+
 cmdp() {
     local quiet=false
 
@@ -12,13 +14,39 @@ cmdp() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -q|--quiet) quiet=true; shift ;;
+            -h|--help)
+                cat >&2 <<EOF
+cmdp $CMDP_VERSION -- Convert WSL paths to Windows paths
+
+Usage:
+  cmdp <path>
+  cmdp [options]
+
+Options:
+  -q, --quiet      Suppress all output (clipboard only)
+  -h, --help       Show this help
+  -V, --version    Show version
+
+Examples:
+  cmdp /mnt/c/Users/janot    C:\\Users\\janot
+  cmdp /home/user             \\\\wsl.localhost\\Ubuntu\\home\\user
+  cmdp . | clip.exe           Pipe to other commands
+
+The converted path is copied to the clipboard and printed to stdout.
+EOF
+                return 0
+                ;;
+            -V|--version)
+                printf 'cmdp %s\n' "$CMDP_VERSION"
+                return 0
+                ;;
             *) break ;;
         esac
     done
 
     if [[ -z "$1" ]]; then
         echo "Usage: cmdp [-q|--quiet] <path>" >&2
-        echo "Converts a WSL path to its Windows equivalent and copies it to the clipboard." >&2
+        echo "Try 'cmdp --help' for more information." >&2
         return 1
     fi
 
@@ -33,11 +61,9 @@ cmdp() {
     fi
 
     # Copy to clipboard
-    local copied=true
     if command -v clip.exe > /dev/null 2>&1; then
         printf '%s' "$win_path" | clip.exe 2>/dev/null
     else
-        copied=false
         if [[ "$quiet" == false ]]; then
             echo "cmdp: clip.exe not found — path not copied to clipboard." >&2
             echo "      Ensure /etc/wsl.conf does not set appendWindowsPath=false." >&2
@@ -56,12 +82,7 @@ cmdp() {
     else
         found="path not found"
     fi
-
-    if [[ "$copied" == true ]]; then
-        echo "Windows path copied to clipboard ($found)" >&2
-    else
-        echo "($found)" >&2
-    fi
+    echo "Windows path copied to clipboard ($found)" >&2
 
     printf '%s\n' "$win_path"
 }

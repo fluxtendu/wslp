@@ -91,7 +91,7 @@ if ($finalPath) {
         [Console]::OutputEncoding = $savedEncoding2
     }
 
-    Write-Host $finalPath
+    Write-Output $finalPath
 } else {
     Write-Host "Cannot convert: $inputPath" -ForegroundColor Red
     exit 1

@@ -4,7 +4,7 @@ Convert Windows paths to WSL paths — and back — from the terminal or right-c
 
 ```
 C:\Users\janot\projects\foo  →  /mnt/c/Users/janot/projects/foo
-\\wsl.localhost\Ubuntu\home\flxutendu  →  /home/fluxtendu
+\\wsl.localhost\Ubuntu\home\fluxtendu  →  /home/fluxtendu
 ```
 
 The converted path is automatically copied to your clipboard.
@@ -30,7 +30,7 @@ Everything is optional. Install what you need.
 ### Via Scoop (recommended)
 
 ```powershell
-scoop bucket add wslp https://github.com/fluxtendu/wslp
+scoop bucket add wslp https://github.com/erratos/wslp
 scoop install wslp
 ```
 
@@ -40,7 +40,7 @@ After install, an interactive script runs to set up optional features (context m
 ### Manual
 
 1. Download or clone this repository.
-2. Copy `src\wslp.cmd`, `src\_wslp.ps1`, and `src\_wslp.vbs` to a folder of your choice
+2. Copy `src\wslp.cmd`, `src\_wslp.ps1`, and `src\ubp.exe` to a folder of your choice
    (e.g. `%LOCALAPPDATA%\Programs\wslp\`).
 3. Add that folder to your PATH (user-level, no admin required):
    ```powershell
@@ -63,14 +63,7 @@ After install, an interactive script runs to set up optional features (context m
 
 Run `scripts\install-registry.ps1` and follow the prompts.
 
-Two styles are available:
-
-| Style | Visibility | Admin required? |
-|-------|-----------|-----------------|
-| **Classic** | Shift+right-click (Win11), always visible (Win10) | No |
-| **Modern** | Always visible in Win11 right-click menu | Yes |
-
-The script will ask which you prefer and re-launch as administrator if needed.
+The entry appears in the classic context menu (Shift+right-click on Win11, always visible on Win10). No admin rights required.
 
 To remove: `scripts\uninstall-registry.ps1`
 
@@ -105,6 +98,10 @@ wslp "C:\Users\janot\projects"
 
 wslp "\\wsl.localhost\Ubuntu\home\janot"
 # → /home/janot  (copied to clipboard)
+
+wslp -q "C:\Users\janot"    # quiet: clipboard only, no output
+wslp --help                  # show help
+wslp --version               # show version
 ```
 
 Works from PowerShell, CMD, and Windows Terminal.
@@ -117,6 +114,10 @@ cmdp /home/janot/projects
 
 cmdp /mnt/c/Users/janot/projects
 # → C:\Users\janot\projects  (copied to clipboard)
+
+cmdp -q /home/janot          # quiet: clipboard only, no output
+cmdp --help                  # show help
+cmdp --version               # show version
 ```
 
 ### Right-click menu

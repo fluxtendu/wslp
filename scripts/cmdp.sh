@@ -42,5 +42,5 @@ cmdp() {
     else
         echo "($found)" >&2
     fi
-    echo "$win_path"
+    printf '%s\n' "$win_path"
 }

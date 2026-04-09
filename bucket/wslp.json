@@ -4,7 +4,7 @@
     "homepage": "https://github.com/erratos/wslp",
     "license": "MIT",
     "url": "https://github.com/erratos/wslp/archive/refs/tags/v1.1.0.zip",
-    "hash": "TODO_SHA256_AFTER_RELEASE",
+    "hash": "f71894d4ea94c6c3a68b90a4107644e2d35038730479e6df3ebf8dc2e8677f5a",
     "extract_dir": "wslp-1.1.0",
     "bin": [
         ["src\\wslp.cmd", "wslp"]

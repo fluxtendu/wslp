@@ -10,7 +10,7 @@
         ["src\\wslp.cmd", "wslp"]
     ],
     "post_install": "& \"$dir\\install.ps1\" -InstallDir \"$dir\" -Silent",
-    "pre_uninstall": "& \"$dir\\uninstall.ps1\"",
+    "pre_uninstall": "& \"$dir\\uninstall.ps1\" -Force",
     "checkver": {
         "github": "https://github.com/erratos/wslp"
     },

@@ -172,10 +172,12 @@ if ($isRemote) {
     $ubpPath = Join-Path $InstallDir "ubp.exe"
     $ps1Path = Join-Path $InstallDir "_wslp.ps1"
     $cmdpSrc = Join-Path $InstallDir "cmdp.sh"
+    $icoPath = Join-Path $InstallDir "wslp.ico"
 } else {
     $ubpPath = Join-Path $InstallDir "src\ubp.exe"
     $ps1Path = Join-Path $InstallDir "src\_wslp.ps1"
     $cmdpSrc = Join-Path $InstallDir "src\cmdp.sh"
+    $icoPath = Join-Path $InstallDir "src\wslp.ico"
 }
 
 if (-not (Test-Path -LiteralPath $ubpPath)) {
@@ -209,11 +211,15 @@ function Set-RegistryEntry {
 function Set-ContextMenuEntries {
     param(
         [string]$ubpPath,
-        [string]$ps1Path
+        [string]$ps1Path,
+        [string]$icoPath
     )
 
     $hive = [Microsoft.Win32.Registry]::CurrentUser
     $cmd = "`"$ubpPath`" `"powershell.exe`" `"-ExecutionPolicy`" `"Bypass`" `"-NoProfile`" `"-NonInteractive`" `"-File`" `"$ps1Path`" `"-RawPath`" `"%V`" `"-Quiet`""
+
+    # Use wslp.ico if available, fallback to wsl.exe
+    $icon = if ($icoPath -and (Test-Path -LiteralPath $icoPath)) { $icoPath } else { "wsl.exe" }
 
     $entries = @(
         "Software\Classes\*\shell\CopyWSLPath",
@@ -222,7 +228,7 @@ function Set-ContextMenuEntries {
 
     foreach ($entry in $entries) {
         Set-RegistryEntry -hive $hive -subKeyPath $entry `
-            -defaultValue "Copy WSL path" -properties @{ Icon = "wsl.exe" }
+            -defaultValue "Copy WSL path" -properties @{ Icon = $icon }
         Set-RegistryEntry -hive $hive -subKeyPath "$entry\command" `
             -defaultValue $cmd
     }
@@ -242,7 +248,7 @@ $installMenu = if ($Silent) { $true } else {
 if ($installMenu) {
     Write-Step "Writing registry keys (HKCU)..."
     try {
-        Set-ContextMenuEntries -ubpPath $ubpPath -ps1Path $ps1Path
+        Set-ContextMenuEntries -ubpPath $ubpPath -ps1Path $ps1Path -icoPath $icoPath
         Write-Ok "Context menu installed (Shift+right-click on Win11, always visible on Win10)."
     } catch {
         Write-Err "Failed to write registry: $_"

@@ -27,7 +27,15 @@ Everything is optional. Install what you need.
 
 ## Installation
 
-### Via Scoop (recommended)
+### One-liner (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/erratos/wslp/main/install.ps1 | iex
+```
+
+Downloads the latest release, installs to `%LOCALAPPDATA%\Programs\wslp`, adds to PATH, and offers to set up the context menu and cmdp interactively.
+
+### Via Scoop
 
 ```powershell
 scoop bucket add wslp https://github.com/erratos/wslp
@@ -40,7 +48,7 @@ After install, an interactive script runs to set up optional features (context m
 ### Manual
 
 1. Download or clone this repository.
-2. Copy `src\wslp.cmd`, `src\_wslp.ps1`, and `src\ubp.exe` to a folder of your choice
+2. Copy `src\wslp.cmd`, `src\_wslp.ps1`, `src\ubp.exe`, and `src\wslp.ico` to a folder of your choice
    (e.g. `%LOCALAPPDATA%\Programs\wslp\`).
 3. Add that folder to your PATH (user-level, no admin required):
    ```powershell
@@ -138,9 +146,15 @@ This removes the command, PATH entry, registry keys, and WSL cmdp automatically.
 
 ### Manual
 
-1. Delete the install folder.
-2. Remove the PATH entry.
-3. Run `uninstall.ps1` to clean up registry and WSL.
+Run the uninstall script:
+
+```powershell
+.\uninstall.ps1
+```
+
+You will be asked for confirmation before anything is removed. Use `-Force` to skip the prompt (e.g. for scripted uninstalls).
+
+The script removes registry entries, cmdp from WSL, and the PATH entry. It then tells you the install folder to delete manually.
 
 ---
 
@@ -155,7 +169,11 @@ This removes the command, PATH entry, registry keys, and WSL cmdp automatically.
 
 ## Roadmap
 
-- [ ] winget package (MSIX)
+- [ ] GUI installer (Windows Forms) with CLI switches for headless mode
+- [ ] WSL distro detection and selection for cmdp install
+- [ ] Install cmdp via `/etc/profile.d/` instead of manual shell config
+- [ ] winget package
+- [ ] Modern Win11 context menu (DLL COM + sparse MSIX)
 
 ---
 
